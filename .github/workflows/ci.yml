@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Initialize Nix
+      uses: cachix/install-nix-action@v20
+      with:
+        nix_path: nixpkgs=channel:nixos-24.11
+
+    - name: Test Flake
+      run: nix flake check
+
+    - name: Test Shell
+      run: nix develop
+
+    - name: Test Build
+      run: nix build
+
+  debug:
+    needs: [build]
+    runs-on: [self-hosted, Linux, X64]
+    if: ${{ failure() }}
+    steps:
+      - run: |
+          echo "Status: Build failed"
+          exit 1
