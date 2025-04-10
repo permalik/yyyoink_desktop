@@ -22,5 +22,5 @@ WORKDIR /bin
 
 # Copy /nix/store
 COPY --from=builder /tmp/nix-store-closure /nix/store
-COPY --from=builder /tmp/build/result /rust_sandbox
-CMD ["/rust_sandbox/bin/rust_sandbox"]
+COPY --from=builder /tmp/build/result /texteditor
+CMD ["/texteditor/bin/texteditor"]
