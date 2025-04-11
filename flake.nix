@@ -24,6 +24,24 @@
           overlays = [rust-overlay.overlays.default];
         };
 
+        buildInputs = with pkgs; [
+            rust-bin.stable.latest.default
+            expat
+            fontconfig
+            freetype
+            freetype.dev
+            libGL
+            pkg-config
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+            wayland
+            libxkbcommon
+            alejandra
+            pre-commit
+        ];
+
         rustToolchain = pkgs.rust-bin.stable.latest.default;
 
         rustPlatform = pkgs.makeRustPlatform {
@@ -49,13 +67,17 @@
         };
 
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            rust-bin.stable.latest.default
-            alejandra
-            pre-commit
-          ];
+          inherit buildInputs;
+          # buildInputs = with pkgs; [
+          #   rust-bin.stable.latest.default
+          #   alejandra
+          #   pre-commit
+          # ];
 
           RUST_BACKTRACE = 1;
+
+          LD_LIBRARY_PATH =
+            builtins.foldl' (a: b: "${a}:${b}/lib") "${pkgs.vulkan-loader}/lib" buildInputs;
 
           shellHook = ''
             . .bashrc
