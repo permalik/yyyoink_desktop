@@ -1,2 +1,2 @@
-pub mod pane;
-pub mod sidebar;
+pub mod capture_pane;
+pub mod capture_sidebar;

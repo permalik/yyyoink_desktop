@@ -1,9 +1,9 @@
 use iced::{color, widget::container, Color};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Pane;
+pub struct CaptureSidebar;
 
-impl Pane {
+impl CaptureSidebar {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {}
@@ -11,15 +11,15 @@ impl Pane {
 }
 
 #[derive(Default)]
-pub struct PaneStyle;
+pub struct CaptureSidebarStyle;
 
-impl container::StyleSheet for PaneStyle {
+impl container::StyleSheet for CaptureSidebarStyle {
     type Style = iced::Theme;
 
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
-            background: Some(iced::Background::Color(color!(0xF5EBD8))),
-            text_color: Some(Color::BLACK),
+            background: Some(iced::Background::Color(color!(0x000000))),
+            text_color: Some(Color::WHITE),
             ..Default::default()
         }
     }

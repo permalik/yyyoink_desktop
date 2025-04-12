@@ -1,29 +1,33 @@
 mod capture;
-use capture::pane::{Pane, PaneStyle};
-use capture::sidebar::{Sidebar, SidebarStyle};
-use iced::widget::{container, row, text};
+use capture::capture_pane::{CapturePane, CapturePaneStyle};
+use capture::capture_sidebar::{CaptureSidebar, CaptureSidebarStyle};
+use iced::widget::{column as col, container, row, text, text_input};
 use iced::{executor, Application, Command, Element, Length, Settings, Theme};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct Editor {
-    sidebar: Sidebar,
-    pane: Pane,
+    capture_pane: CapturePane,
+    capture_sidebar: CaptureSidebar,
+    capture_sidebar_search_content: String,
 }
 
 impl Default for Editor {
     fn default() -> Editor {
-        let sidebar = Sidebar::new();
-        let pane = Pane::new();
+        let capture_sidebar = CaptureSidebar::new();
+        let capture_pane = CapturePane::new();
         Editor {
-            sidebar: sidebar,
-            pane: pane,
+            capture_pane: capture_pane,
+            capture_sidebar: capture_sidebar,
+            capture_sidebar_search_content: String::new(),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum Message {}
+#[derive(Debug, Clone)]
+enum Message {
+    InputChanged(String),
+}
 
 impl Application for Editor {
     type Executor = executor::Default;
@@ -39,23 +43,41 @@ impl Application for Editor {
         String::from("Yoink Desktop")
     }
 
-    fn update(&mut self, _message: Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) -> Command<Self::Message> {
+        match message {
+            Message::InputChanged(value) => {
+                println!("{}", value);
+                self.capture_sidebar_search_content = value;
+            }
+        }
+
         Command::none()
     }
 
     fn view(&self) -> Element<Self::Message> {
-        let sidebar = container(text("Sidebar."))
-            .width(Length::FillPortion(2))
-            .height(Length::Fill)
-            .padding(5)
-            .style(iced::theme::Container::Custom(Box::new(SidebarStyle)));
-        let pane = container(text("Editor Pane."))
+        let capture_sidebar = container(
+            col![
+                text_input("Capture..", &self.capture_sidebar_search_content)
+                    .on_input(Message::InputChanged),
+                text("Capture001.."),
+                text("Capture002.."),
+                text("Capture003.."),
+            ]
+            .spacing(10),
+        )
+        .width(Length::FillPortion(2))
+        .height(Length::Fill)
+        .padding(5)
+        .style(iced::theme::Container::Custom(Box::new(
+            CaptureSidebarStyle,
+        )));
+        let capture_pane = container(text("Editor Pane."))
             .width(Length::FillPortion(6))
             .height(Length::Fill)
             .padding(5)
-            .style(iced::theme::Container::Custom(Box::new(PaneStyle)));
+            .style(iced::theme::Container::Custom(Box::new(CapturePaneStyle)));
 
-        let ui = row![sidebar, pane];
+        let ui = row![capture_sidebar, capture_pane];
 
         container(ui)
             .width(Length::Fill)
