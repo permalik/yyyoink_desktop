@@ -1,56 +1,8 @@
+mod capture;
+use capture::pane::{Pane, PaneStyle};
+use capture::sidebar::{Sidebar, SidebarStyle};
 use iced::widget::{container, row, text};
-use iced::{color, executor, Color, Length};
-use iced::{Application, Command, Element, Settings, Theme};
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Sidebar;
-
-impl Sidebar {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-#[derive(Default)]
-pub struct SidebarStyle;
-
-impl container::StyleSheet for SidebarStyle {
-    type Style = iced::Theme;
-
-    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
-        container::Appearance {
-            background: Some(iced::Background::Color(color!(0x000000))),
-            text_color: Some(Color::WHITE),
-            ..Default::default()
-        }
-    }
-}
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Pane;
-
-impl Pane {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-#[derive(Default)]
-pub struct PaneStyle;
-
-impl container::StyleSheet for PaneStyle {
-    type Style = iced::Theme;
-
-    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
-        container::Appearance {
-            background: Some(iced::Background::Color(color!(0xF5EBD8))),
-            text_color: Some(Color::BLACK),
-            ..Default::default()
-        }
-    }
-}
+use iced::{executor, Application, Command, Element, Length, Settings, Theme};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -84,7 +36,7 @@ impl Application for Editor {
     }
 
     fn title(&self) -> String {
-        String::from("Custom Editor")
+        String::from("Yoink Desktop")
     }
 
     fn update(&mut self, _message: Message) -> Command<Self::Message> {

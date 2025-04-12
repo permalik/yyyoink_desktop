@@ -1,5 +1,5 @@
 {
-  description = "texteditor";
+  description = "yyyoink_desktop";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/release-24.11";
@@ -17,7 +17,7 @@
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        pname = "texteditor";
+        pname = "yyyoink_desktop";
 
         pkgs = import nixpkgs {
           inherit system;

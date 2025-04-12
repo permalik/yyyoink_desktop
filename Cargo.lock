@@ -2362,15 +2362,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "texteditor"
-version = "0.1.0"
-dependencies = [
- "iced",
- "iced_core 0.13.2",
- "palette",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3426,6 +3417,15 @@ name = "yazi"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c94451ac9513335b5e23d7a8a2b61a7102398b8cca5160829d313e84c9d98be1"
+
+[[package]]
+name = "yyyoink_desktop"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_core 0.13.2",
+ "palette",
+]
 
 [[package]]
 name = "zeno"

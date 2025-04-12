@@ -1,2 +1,2 @@
-# texteditor
-application:Cross-Platform Markdown Editor
+# yyyoink_desktop
+application:Cross-Platform Desktop Markdown Notes and Editor

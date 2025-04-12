@@ -22,5 +22,5 @@ WORKDIR /bin
 
 # Copy /nix/store
 COPY --from=builder /tmp/nix-store-closure /nix/store
-COPY --from=builder /tmp/build/result /texteditor
-CMD ["/texteditor/bin/texteditor"]
+COPY --from=builder /tmp/build/result /yyyoink_desktop
+CMD ["/yyyoink_desktop/bin/yyyoink_desktop"]

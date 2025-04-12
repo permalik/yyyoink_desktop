@@ -1,9 +1,9 @@
 # Custom Prompt
-export PS1="\n\[\e[1;32m\][devshell](texteditor) \w\n❯ \[\e[0m\]"
+export PS1="\n\[\e[1;32m\][devshell](yyyoink_desktop) \w\n❯ \[\e[0m\]"
 
 # Aliases
-alias docker-build-dev="docker build -t texteditor:dev ."
-alias docker-run-dev="docker run --rm texteditor:dev"
+alias docker-build-dev="docker build -t yyyoink_desktop:dev ."
+alias docker-run-dev="docker run --rm yyyoink_desktop:dev"
 alias nv="nvim"
 alias glr="pretty_git_log"
 alias gs="git status"
