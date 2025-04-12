@@ -1,25 +1,31 @@
 mod capture;
-use capture::capture_pane::{CapturePane, CapturePaneStyle};
-use capture::capture_sidebar::{CaptureSidebar, CaptureSidebarStyle};
-use iced::widget::{column as col, container, row, text, text_input};
-use iced::{executor, Application, Command, Element, Length, Settings, Theme};
+use capture::capture_pane::CapturePane;
+use capture::capture_sidebar::CaptureSidebar;
+
+use iced::widget::{column as col, container, row, text, text_editor, text_input};
+use iced::{Color, Element, Font, Length, Task};
+
+pub fn main() -> iced::Result {
+    iced::application("Yoink Desktop", Yoink::update, Yoink::view)
+        .default_font(Font::MONOSPACE)
+        .run()
+}
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
-struct Editor {
+struct Yoink {
     capture_pane: CapturePane,
     capture_sidebar: CaptureSidebar,
     capture_sidebar_search_content: String,
+    capture_form_content: text_editor::Content,
 }
 
-impl Default for Editor {
-    fn default() -> Editor {
-        let capture_sidebar = CaptureSidebar::new();
-        let capture_pane = CapturePane::new();
-        Editor {
-            capture_pane: capture_pane,
-            capture_sidebar: capture_sidebar,
+impl Default for Yoink {
+    fn default() -> Yoink {
+        Yoink {
+            capture_pane: CapturePane::new(),
+            capture_sidebar: CaptureSidebar::new(),
             capture_sidebar_search_content: String::new(),
+            capture_form_content: text_editor::Content::new(),
         }
     }
 }
@@ -27,34 +33,11 @@ impl Default for Editor {
 #[derive(Debug, Clone)]
 enum Message {
     InputChanged(String),
+    CaptureFormContentChanged(text_editor::Action),
 }
 
-impl Application for Editor {
-    type Executor = executor::Default;
-    type Flags = ();
-    type Message = Message;
-    type Theme = Theme;
-
-    fn new(_flags: ()) -> (Editor, Command<Self::Message>) {
-        (Editor::default(), Command::none())
-    }
-
-    fn title(&self) -> String {
-        String::from("Yoink Desktop")
-    }
-
-    fn update(&mut self, message: Message) -> Command<Self::Message> {
-        match message {
-            Message::InputChanged(value) => {
-                println!("{}", value);
-                self.capture_sidebar_search_content = value;
-            }
-        }
-
-        Command::none()
-    }
-
-    fn view(&self) -> Element<Self::Message> {
+impl Yoink {
+    fn view(&self) -> Element<Message> {
         let capture_sidebar = container(
             col![
                 text_input("Capture..", &self.capture_sidebar_search_content)
@@ -68,25 +51,58 @@ impl Application for Editor {
         .width(Length::FillPortion(2))
         .height(Length::Fill)
         .padding(5)
-        .style(iced::theme::Container::Custom(Box::new(
-            CaptureSidebarStyle,
-        )));
-        let capture_pane = container(text("Editor Pane."))
-            .width(Length::FillPortion(6))
-            .height(Length::Fill)
-            .padding(5)
-            .style(iced::theme::Container::Custom(Box::new(CapturePaneStyle)));
+        .style(|_theme| container::Style {
+            text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
+            background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+            border: iced::Border::default(),
+            shadow: iced::Shadow::default(),
+        });
+        let capture_pane = container(
+            col![
+                text("Capture"),
+                text_input("Topic..", &self.capture_sidebar_search_content)
+                    .on_input(Message::InputChanged),
+                text_input("Subject..", &self.capture_sidebar_search_content)
+                    .on_input(Message::InputChanged),
+                text_editor(&self.capture_form_content)
+                    .on_action(Message::CaptureFormContentChanged)
+            ]
+            .spacing(10),
+        )
+        .width(Length::FillPortion(6))
+        .height(Length::Fill)
+        .padding(5)
+        .style(|_theme| container::Style {
+            text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
+            background: Some(iced::Background::Color(Color::from_rgb8(255, 224, 181))),
+            border: iced::Border::default(),
+            shadow: iced::Shadow::default(),
+        });
 
         let ui = row![capture_sidebar, capture_pane];
 
         container(ui)
             .width(Length::Fill)
             .height(Length::Fill)
-            .center_y()
             .into()
     }
-}
 
-pub fn main() -> iced::Result {
-    Editor::run(Settings::default())
+    fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            Message::InputChanged(value) => {
+                println!("{}", value);
+                self.capture_sidebar_search_content = value;
+
+                Task::none()
+            }
+            Message::CaptureFormContentChanged(action) => {
+                self.capture_form_content.perform(action);
+
+                let editor_text = self.capture_form_content.text();
+                println!("{}", editor_text);
+
+                Task::none()
+            }
+        }
+    }
 }
