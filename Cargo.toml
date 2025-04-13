@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 iced = { version = "0.13.1", features = ["tokio"] }
 tokio = { version = "1.44.2", features = ["fs", "io-util"] }
+chrono = "0.4.40"
 palette = "0.7.4"
