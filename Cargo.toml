@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = "0.13.1"
-iced_core = "0.13.0"
+iced = { version = "0.13.1", features = ["tokio"] }
+tokio = { version = "1.44.2", features = ["fs", "io-util"] }
 palette = "0.7.4"
