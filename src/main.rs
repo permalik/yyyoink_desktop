@@ -5,27 +5,15 @@ use capture::capture_models::Capture;
 use capture::capture_pane::CapturePane;
 use capture::capture_sidebar::CaptureSidebar;
 use chrono::prelude::*;
-use enums::error::Error;
+use enums::message::Message;
 use iced::widget::{button, column as col, container, row, text, text_editor, text_input};
 use iced::{Color, Element, Font, Length, Task};
-use std::path::PathBuf;
 use utilities::file;
 
 pub fn main() -> iced::Result {
     iced::application("Yoink Desktop", Yoink::update, Yoink::view)
         .default_font(Font::MONOSPACE)
         .run_with(Yoink::new)
-}
-
-#[derive(Debug, Clone)]
-enum Message {
-    CapturesLoaded(Result<String, Error>),
-    CaptureSearchChanged(String),
-    CaptureTopicChanged(String),
-    CaptureSubjectChanged(String),
-    CaptureFormContentChanged(text_editor::Action),
-    SubmitCapture,
-    FileOpened(Result<PathBuf, Error>),
 }
 
 struct Yoink {
