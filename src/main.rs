@@ -46,22 +46,18 @@ impl Yoink {
             }
             Message::CaptureSearchChanged(value) => {
                 self.capture.search = value;
-
                 Task::none()
             }
             Message::CaptureTopicChanged(value) => {
                 self.capture.form_topic = value;
-
                 Task::none()
             }
             Message::CaptureSubjectChanged(value) => {
                 self.capture.form_subject = value;
-
                 Task::none()
             }
             Message::CaptureFormContentChanged(action) => {
                 self.capture.form_content.perform(action);
-
                 Task::none()
             }
             Message::SubmitCapture => {
@@ -90,7 +86,6 @@ impl Yoink {
                     self.capture.updated_file = Some(path.to_string_lossy().to_string());
                     println!("Opened/Written to {}", path.display());
                 }
-
                 Task::none()
             }
         }

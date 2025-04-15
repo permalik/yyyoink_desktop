@@ -3,24 +3,48 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
 
+const TEST_PATH: &str = "/Users/tymalik/Docs/Git/markdown/_test.md";
+
 pub async fn load_captures() -> Result<String, Error> {
-    let value = "loaded_capture001".to_string();
-    Ok(value)
+    match read_file().await {
+        Ok(_) => {
+            println!("Success: vec_result");
+        }
+        Err(e) => {
+            eprintln!("Failure: vec_result");
+            return Err(e);
+        }
+    }
+
+    Ok("loaded_capture001".to_string())
+}
+
+async fn read_file() -> Result<Vec<String>, Error> {
+    // TODO:Remove this paranoid file check.
+    // Attempt the read and handle error if it occurs due to non-existant file.
+    let (is_file, path) = file_exists(TEST_PATH).await;
+
+    if is_file {
+        let bytes = tokio::fs::read(&path)
+            .await
+            .map_err(|e| Error::IoError(e.kind()))?;
+        if let Ok(string) = String::from_utf8(bytes.clone()) {
+            // TODO: Parse this file output
+            println!("{}", string);
+            Ok(vec!["return contents".to_string()])
+        } else {
+            Err(Error::IoError(ErrorKind::InvalidData))
+        }
+    } else {
+        eprintln!("Failed to read file. File does not exist.");
+        Err(Error::FileNotFound)
+    }
 }
 
 pub async fn write_file(capture_string: String) -> Result<PathBuf, Error> {
-    let path = PathBuf::from("/Users/tymalik/Docs/Git/markdown/_test.md");
-    let check_path = path.clone();
+    let (is_file, path) = file_exists(TEST_PATH).await;
 
-    let file_exists = tokio::task::spawn_blocking(move || std::fs::metadata(&check_path).is_ok())
-        .await
-        .map_err(|e| {
-            eprintln!("Failed: Unable to determine if file exists. {}", e);
-            e
-        })
-        .expect("Failed: Unable to determine if file exists.");
-
-    if !file_exists {
+    if !is_file {
         let capture_bytes: &[u8] = capture_string.as_bytes();
         match tokio::fs::write(&path, capture_bytes).await {
             Ok(_) => {
@@ -97,4 +121,19 @@ pub async fn write_file(capture_string: String) -> Result<PathBuf, Error> {
 
         Ok(path)
     }
+}
+
+async fn file_exists(current_path: &str) -> (bool, PathBuf) {
+    let path = PathBuf::from(current_path);
+    let check_path = path.clone();
+
+    let file_exists = tokio::task::spawn_blocking(move || std::fs::metadata(&check_path).is_ok())
+        .await
+        .map_err(|e| {
+            eprintln!("failed: unable to determine if file exists. {}", e);
+            e
+        })
+        .expect("Failed: Unable to determine if file exists.");
+
+    return (file_exists, path);
 }
