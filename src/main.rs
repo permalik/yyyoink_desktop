@@ -14,11 +14,12 @@ use utilities::file;
 pub fn main() -> iced::Result {
     iced::application("Yoink Desktop", Yoink::update, Yoink::view)
         .default_font(Font::MONOSPACE)
-        .run()
+        .run_with(Yoink::new)
 }
 
 #[derive(Debug, Clone)]
 enum Message {
+    CapturesLoaded(Result<String, Error>),
     CaptureSearchChanged(String),
     CaptureTopicChanged(String),
     CaptureSubjectChanged(String),
@@ -28,24 +29,33 @@ enum Message {
 }
 
 struct Yoink {
+    captures: String,
     capture: Capture,
     capture_pane: CapturePane,
     capture_sidebar: CaptureSidebar,
 }
 
-impl Default for Yoink {
-    fn default() -> Yoink {
-        Yoink {
-            capture: Capture::new(),
-            capture_pane: CapturePane::new(),
-            capture_sidebar: CaptureSidebar::new(),
-        }
-    }
-}
-
 impl Yoink {
+    fn new() -> (Self, Task<Message>) {
+        (
+            Self {
+                captures: String::new(),
+                capture: Capture::new(),
+                capture_pane: CapturePane::new(),
+                capture_sidebar: CaptureSidebar::new(),
+            },
+            Task::perform(file::load_captures(), Message::CapturesLoaded),
+        )
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::CapturesLoaded(result) => {
+                if let Ok(value) = result {
+                    self.captures = value;
+                }
+                Task::none()
+            }
             Message::CaptureSearchChanged(value) => {
                 self.capture.search = value;
 
@@ -84,12 +94,6 @@ impl Yoink {
                 );
                 let content_string = format!("{}{}", self.capture.form_content.text(), "\n");
                 let capture_string = format!("{}{}", spec_string, content_string);
-                /*
-                 *
-                 * <!--yoink::20250413::Rust String Concatentation-->
-                 * Concat strings with `+ operator`, `push_str()`, or `format!`.
-                 *
-                 * */
 
                 Task::perform(file::write_file(capture_string), Message::FileOpened)
             }
@@ -110,7 +114,7 @@ impl Yoink {
                 col![
                     text_input("Capture..", &self.capture.search)
                         .on_input(Message::CaptureSearchChanged),
-                    text("Capture001.."),
+                    text(self.captures.to_string()),
                     text("Capture002.."),
                     text("Capture003.."),
                 ]

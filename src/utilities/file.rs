@@ -3,6 +3,11 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
 
+pub async fn load_captures() -> Result<String, Error> {
+    let value = "loaded_capture001".to_string();
+    Ok(value)
+}
+
 pub async fn write_file(capture_string: String) -> Result<PathBuf, Error> {
     let path = PathBuf::from("/Users/tymalik/Docs/Git/markdown/_test.md");
     let check_path = path.clone();
