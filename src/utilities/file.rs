@@ -5,18 +5,39 @@ use tokio::io::AsyncWriteExt;
 
 const TEST_PATH: &str = "/Users/tymalik/Docs/Git/markdown/_test.md";
 
-pub async fn load_captures() -> Result<String, Error> {
+pub async fn load_captures() -> Result<Vec<String>, Error> {
     match read_file().await {
-        Ok(_) => {
-            println!("Success: vec_result");
+        Ok(lines) => {
+            let mut parts: Option<Vec<String>> = None;
+            for line in &lines {
+                // TODO: Dynamically check for various-sized initial input strings
+                if line.len() > 16 && &line[..4] == "<!--" && &line[line.len() - 3..] == "-->" {
+                    let chars: Vec<char> = line.chars().collect();
+                    let unwrapped_line: String = chars[4..chars.len() - 3].iter().collect();
+                    let parsed_parts: Vec<String> = unwrapped_line
+                        .split("::::")
+                        .map(|s| s.to_string())
+                        .collect();
+
+                    if parsed_parts.len() >= 3 {
+                        println!("{}", parsed_parts[0]);
+                        println!("{}", parsed_parts[1]);
+                        println!("{}", parsed_parts[2]);
+                    }
+                    parts = Some(parsed_parts);
+                }
+            }
+            if let Some(parts) = parts {
+                Ok(parts)
+            } else {
+                Err(Error::IoError(ErrorKind::InvalidData))
+            }
         }
         Err(e) => {
             eprintln!("Failure: vec_result");
             return Err(e);
         }
     }
-
-    Ok("loaded_capture001".to_string())
 }
 
 async fn read_file() -> Result<Vec<String>, Error> {
@@ -29,9 +50,8 @@ async fn read_file() -> Result<Vec<String>, Error> {
             .await
             .map_err(|e| Error::IoError(e.kind()))?;
         if let Ok(string) = String::from_utf8(bytes.clone()) {
-            // TODO: Parse this file output
-            println!("{}", string);
-            Ok(vec!["return contents".to_string()])
+            let lines: Vec<String> = string.lines().map(|s| s.to_string()).collect();
+            Ok(lines)
         } else {
             Err(Error::IoError(ErrorKind::InvalidData))
         }

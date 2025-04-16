@@ -40,7 +40,7 @@ impl Yoink {
         match message {
             Message::CapturesLoaded(result) => {
                 if let Ok(value) = result {
-                    self.captures = value;
+                    self.captures = value.get(2).cloned().unwrap_or_default();
                 }
                 Task::none()
             }
@@ -66,8 +66,8 @@ impl Yoink {
                 println!("Subject: {}", self.capture.form_subject);
                 let form_content = self.capture.form_content.text();
                 println!("{}", form_content);
-                let spec_prefix = "<!--yoink::";
-                let spec_delimiter = "::";
+                let spec_prefix = "<!--yoink::::";
+                let spec_delimiter = "::::";
                 let spec_suffix = "-->\n";
                 let utc = Utc::now();
                 let local_timestamp = utc.with_timezone(&Local).to_string();
@@ -97,7 +97,7 @@ impl Yoink {
                 col![
                     text_input("Capture..", &self.capture.search)
                         .on_input(Message::CaptureSearchChanged),
-                    text(self.captures.to_string()),
+                    text(self.captures.clone()),
                     text("Capture002.."),
                     text("Capture003.."),
                 ]
