@@ -21,6 +21,7 @@ struct Yoink {
     capture: Capture,
     capture_pane: CapturePane,
     capture_sidebar: CaptureSidebar,
+    ui_error: Option<String>,
 }
 
 impl Yoink {
@@ -31,6 +32,7 @@ impl Yoink {
                 capture: Capture::new(),
                 capture_pane: CapturePane::new(),
                 capture_sidebar: CaptureSidebar::new(),
+                ui_error: None,
             },
             Task::perform(file::load_captures(), Message::CapturesLoaded),
         )
@@ -62,7 +64,8 @@ impl Yoink {
             }
             Message::SubmitCapture => {
                 if !self.capture.form_topic.starts_with('_') {
-                    println!("Submission failed: Topic must start with underscore.");
+                    self.ui_error =
+                        Some("Submission failed: Topic must start with underscore.".to_string());
                     Task::none()
                 } else {
                     println!("Search: {}", self.capture.search);
@@ -103,6 +106,21 @@ impl Yoink {
     }
 
     fn view(&self) -> Element<Message> {
+        let error_overlay = self.ui_error.as_ref().map(|msg| {
+            container(text(msg))
+                .width(Length::Fill)
+                .height(Length::Shrink)
+                .center_x(Length::Shrink)
+                .center_y(Length::Shrink)
+                .padding(10)
+                .style(|_theme| container::Style {
+                    text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
+                    background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                })
+        });
+
         let capture_list = self
             .captures
             .iter()
@@ -188,11 +206,14 @@ impl Yoink {
                 })
         };
 
-        let ui = row![capture_sidebar, capture_pane];
+        let capture_ui = row![capture_sidebar, capture_pane];
 
-        container(ui)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        let layered_ui = if let Some(error_box) = error_overlay {
+            container(col![error_box, capture_ui].width(Length::Fill))
+        } else {
+            container(capture_ui)
+        };
+
+        layered_ui.width(Length::Fill).height(Length::Fill).into()
     }
 }
