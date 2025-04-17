@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    CapturesLoaded(Result<Vec<String>, error::Error>),
+    CapturesLoaded(Result<Vec<Vec<String>>, error::Error>),
     CaptureSearchChanged(String),
     CaptureTopicChanged(String),
     CaptureSubjectChanged(String),

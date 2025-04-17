@@ -17,7 +17,7 @@ pub fn main() -> iced::Result {
 }
 
 struct Yoink {
-    captures: String,
+    captures: Vec<Vec<String>>,
     capture: Capture,
     capture_pane: CapturePane,
     capture_sidebar: CaptureSidebar,
@@ -27,7 +27,7 @@ impl Yoink {
     fn new() -> (Self, Task<Message>) {
         (
             Self {
-                captures: String::new(),
+                captures: Vec::new(),
                 capture: Capture::new(),
                 capture_pane: CapturePane::new(),
                 capture_sidebar: CaptureSidebar::new(),
@@ -40,7 +40,7 @@ impl Yoink {
         match message {
             Message::CapturesLoaded(result) => {
                 if let Ok(value) = result {
-                    self.captures = value.get(2).cloned().unwrap_or_default();
+                    self.captures = value;
                 }
                 Task::none()
             }
@@ -61,25 +61,36 @@ impl Yoink {
                 Task::none()
             }
             Message::SubmitCapture => {
-                println!("Search: {}", self.capture.search);
-                println!("Topic: {}", self.capture.form_topic);
-                println!("Subject: {}", self.capture.form_subject);
-                let form_content = self.capture.form_content.text();
-                println!("{}", form_content);
-                let spec_prefix = "<!--yoink::::";
-                let spec_delimiter = "::::";
-                let spec_suffix = "-->\n";
-                let utc = Utc::now();
-                let local_timestamp = utc.with_timezone(&Local).to_string();
-                let local = &local_timestamp[..19].to_string();
-                let spec_string = format!(
-                    "{}{}{}{}{}",
-                    spec_prefix, local, spec_delimiter, self.capture.form_subject, spec_suffix
-                );
-                let content_string = format!("{}{}", self.capture.form_content.text(), "\n");
-                let capture_string = format!("{}{}", spec_string, content_string);
+                if !self.capture.form_topic.starts_with('_') {
+                    println!("Submission failed: Topic must start with underscore.");
+                    Task::none()
+                } else {
+                    println!("Search: {}", self.capture.search);
+                    println!("Topic: {}", self.capture.form_topic);
+                    println!("Subject: {}", self.capture.form_subject);
+                    let form_content = self.capture.form_content.text();
+                    println!("{}", form_content);
+                    let spec_prefix = "<!--yoink::::";
+                    let spec_delimiter = "::::";
+                    let spec_suffix = "-->\n";
+                    let utc = Utc::now();
+                    let local_timestamp = utc.with_timezone(&Local).to_string();
+                    let local = &local_timestamp[..19].to_string();
+                    let spec_string = format!(
+                        "{}{}{}{}{}{}{}",
+                        spec_prefix,
+                        local,
+                        spec_delimiter,
+                        self.capture.form_topic,
+                        spec_delimiter,
+                        self.capture.form_subject,
+                        spec_suffix
+                    );
+                    let content_string = format!("{}{}", self.capture.form_content.text(), "\n");
+                    let capture_string = format!("{}{}", spec_string, content_string);
 
-                Task::perform(file::write_file(capture_string), Message::FileOpened)
+                    Task::perform(file::write_file(capture_string), Message::FileOpened)
+                }
             }
             Message::FileOpened(result) => {
                 if let Ok(path) = result {
@@ -92,14 +103,24 @@ impl Yoink {
     }
 
     fn view(&self) -> Element<Message> {
+        let capture_list = self
+            .captures
+            .iter()
+            .map(|capture| {
+                col(capture
+                    .iter()
+                    .map(|field| text(field).into())
+                    .collect::<Vec<Element<Message>>>())
+                .into()
+            })
+            .collect::<Vec<Element<Message>>>();
+
         let capture_sidebar = if self.capture_sidebar.is_visible {
             container(
                 col![
                     text_input("Capture..", &self.capture.search)
                         .on_input(Message::CaptureSearchChanged),
-                    text(self.captures.clone()),
-                    text("Capture002.."),
-                    text("Capture003.."),
+                    col(capture_list).spacing(5),
                 ]
                 .spacing(10),
             )

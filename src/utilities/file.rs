@@ -5,30 +5,32 @@ use tokio::io::AsyncWriteExt;
 
 const TEST_PATH: &str = "/Users/tymalik/Docs/Git/markdown/_test.md";
 
-pub async fn load_captures() -> Result<Vec<String>, Error> {
+pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
     match read_file().await {
         Ok(lines) => {
-            let mut parts: Option<Vec<String>> = None;
+            // let mut parts: Vec<String>;
+            let mut captures: Option<Vec<Vec<String>>> = None;
             for line in &lines {
-                // TODO: Dynamically check for various-sized initial input strings
+                // TODO: Check for various-sized initial input strings
                 if line.len() > 16 && &line[..4] == "<!--" && &line[line.len() - 3..] == "-->" {
                     let chars: Vec<char> = line.chars().collect();
                     let unwrapped_line: String = chars[4..chars.len() - 3].iter().collect();
-                    let parsed_parts: Vec<String> = unwrapped_line
+                    let parts: Vec<String> = unwrapped_line
                         .split("::::")
                         .map(|s| s.to_string())
                         .collect();
 
-                    if parsed_parts.len() >= 3 {
-                        println!("{}", parsed_parts[0]);
-                        println!("{}", parsed_parts[1]);
-                        println!("{}", parsed_parts[2]);
+                    if parts.len() >= 3 {
+                        println!("{}", parts[0]);
+                        println!("{}", parts[1]);
+                        println!("{}", parts[2]);
+                        println!("{}", parts[3]);
                     }
-                    parts = Some(parsed_parts);
+                    captures.get_or_insert(vec![]).push(parts);
                 }
             }
-            if let Some(parts) = parts {
-                Ok(parts)
+            if let Some(captures) = captures {
+                Ok(captures)
             } else {
                 Err(Error::IoError(ErrorKind::InvalidData))
             }
