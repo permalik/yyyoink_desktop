@@ -1,4 +1,5 @@
 use super::error;
+use iced::event::Event;
 use iced::widget::text_editor;
 use std::path::PathBuf;
 
@@ -13,4 +14,5 @@ pub enum Message {
     FileOpened(Result<PathBuf, error::Error>),
     ShowError(Result<String, error::Error>),
     HideError,
+    Event(Event),
 }

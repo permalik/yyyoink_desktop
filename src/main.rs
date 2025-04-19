@@ -6,15 +6,19 @@ use capture::capture_pane::CapturePane;
 use capture::capture_sidebar::CaptureSidebar;
 use chrono::prelude::*;
 use enums::message::Message;
+use iced::event::{self, Event};
+use iced::keyboard;
+use iced::keyboard::key;
 use iced::widget::{
     self, button, center, column as col, container, mouse_area, opaque, row, stack, text,
     text_editor, text_input,
 };
-use iced::{Color, Element, Font, Length, Task};
+use iced::{Color, Element, Font, Length, Subscription, Task};
 use utilities::file;
 
 pub fn main() -> iced::Result {
     iced::application("Yoink Desktop", Yoink::update, Yoink::view)
+        .subscription(Yoink::subscription)
         .default_font(Font::MONOSPACE)
         .run_with(Yoink::new)
 }
@@ -41,6 +45,10 @@ impl Yoink {
             },
             Task::perform(file::load_captures(), Message::CapturesLoaded),
         )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        event::listen().map(Message::Event)
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -123,6 +131,31 @@ impl Yoink {
                 }
                 Task::none()
             }
+            Message::Event(event) => match event {
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Tab),
+                    modifiers,
+                    ..
+                }) => {
+                    if modifiers.shift() {
+                        widget::focus_previous()
+                    } else {
+                        widget::focus_next()
+                    }
+                }
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Escape),
+                    ..
+                }) => {
+                    self.hide_error();
+                    Task::none()
+                }
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Enter),
+                    ..
+                }) => Task::perform(async {}, |_| Message::SubmitCapture),
+                _ => Task::none(),
+            },
         }
     }
 
