@@ -79,9 +79,11 @@ impl Yoink {
                 Task::none()
             }
             Message::SubmitCapture => {
-                if !self.capture.form_topic.starts_with('_') {
-                    self.ui_error =
-                        "Submission failed: Topic must start with underscore.".to_string();
+                if self.capture.form_topic.is_empty()
+                    || self.capture.form_subject.is_empty()
+                    || self.capture.form_content.text().trim().is_empty()
+                {
+                    self.ui_error = "Submission failed: Inputs cannot be null.".to_string();
                     Task::perform(file::log(), Message::ShowError)
                 } else {
                     println!("Search: {}", self.capture.search);
@@ -108,7 +110,10 @@ impl Yoink {
                     let content_string = format!("{}{}", self.capture.form_content.text(), "\n");
                     let capture_string = format!("{}{}", spec_string, content_string);
 
-                    Task::perform(file::write_file(capture_string), Message::FileOpened)
+                    Task::perform(
+                        file::write_file(self.capture.form_topic.clone(), capture_string),
+                        Message::FileOpened,
+                    )
                 }
             }
             Message::FileOpened(result) => {
@@ -214,8 +219,7 @@ impl Yoink {
             .height(Length::Fill);
 
         if self.show_error {
-            // let error_overlay = self.ui_error.as_ref().map(|msg| { container(text(msg))
-            let error_overlay = container(text("Cannot begin with underscore!"))
+            let error_overlay = container(text(self.ui_error.to_string()))
                 .width(Length::Fill)
                 .height(Length::Shrink)
                 .center_x(Length::Shrink)

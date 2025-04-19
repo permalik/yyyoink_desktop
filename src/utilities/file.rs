@@ -1,9 +1,8 @@
+use super::tool;
 use crate::enums::error::Error;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
-
-const TEST_PATH: &str = "/Users/tymalik/Docs/Git/markdown/_test.md";
 
 pub async fn log() -> Result<String, Error> {
     let success = true;
@@ -56,7 +55,9 @@ pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
 async fn read_file() -> Result<Vec<String>, Error> {
     // TODO:Remove this paranoid file check.
     // Attempt the read and handle error if it occurs due to non-existant file.
-    let (is_file, path) = file_exists(TEST_PATH).await;
+    let capture_path = tool::source_path("test".to_string());
+    let capture_path_ref: &str = &capture_path;
+    let (is_file, path) = file_exists(capture_path_ref).await;
 
     if is_file {
         let bytes = tokio::fs::read(&path)
@@ -74,8 +75,10 @@ async fn read_file() -> Result<Vec<String>, Error> {
     }
 }
 
-pub async fn write_file(capture_string: String) -> Result<PathBuf, Error> {
-    let (is_file, path) = file_exists(TEST_PATH).await;
+pub async fn write_file(capture_file: String, capture_string: String) -> Result<PathBuf, Error> {
+    let capture_path = tool::source_path(capture_file);
+    let capture_path_ref: &str = &capture_path;
+    let (is_file, path) = file_exists(capture_path_ref).await;
 
     if !is_file {
         let capture_bytes: &[u8] = capture_string.as_bytes();
