@@ -99,6 +99,12 @@ impl Yoink {
                     println!("Subject: {}", self.capture.form_subject);
                     let form_content = self.capture.form_content.text();
                     println!("{}", form_content);
+                    let file_name_prefix = "_";
+                    let file_name_ext = ".md";
+                    let form_topic = format!(
+                        "{}{}{}",
+                        file_name_prefix, self.capture.form_topic, file_name_ext
+                    );
                     let spec_prefix = "<!--yoink::::";
                     let spec_delimiter = "::::";
                     let spec_suffix = "-->\n";
@@ -119,7 +125,7 @@ impl Yoink {
                     let capture_string = format!("{}{}", spec_string, content_string);
 
                     Task::perform(
-                        file::write_file(self.capture.form_topic.clone(), capture_string),
+                        file::write_file(form_topic, capture_string),
                         Message::FileOpened,
                     )
                 }

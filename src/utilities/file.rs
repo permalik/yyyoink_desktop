@@ -1,5 +1,6 @@
 use super::tool;
 use crate::enums::error::Error;
+use std::ffi::OsString;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
@@ -16,46 +17,93 @@ pub async fn log() -> Result<String, Error> {
 }
 
 pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
-    match read_file().await {
-        Ok(lines) => {
-            let mut captures: Option<Vec<Vec<String>>> = None;
-            for line in &lines {
-                // TODO: Check for various-sized initial input strings
-                if line.len() > 16 && &line[..4] == "<!--" && &line[line.len() - 3..] == "-->" {
-                    let chars: Vec<char> = line.chars().collect();
-                    let unwrapped_line: String = chars[4..chars.len() - 3].iter().collect();
-                    let parts: Vec<String> = unwrapped_line
-                        .split("::::")
-                        .map(|s| s.to_string())
-                        .collect();
-
-                    if parts.len() >= 3 {
-                        for part in parts.iter().skip(1) {
-                            println!("{}", part);
-                        }
-                    }
-                    captures
-                        .get_or_insert(vec![])
-                        .push(parts.into_iter().skip(1).collect());
-                }
-            }
-            if let Some(captures) = captures {
-                Ok(captures)
-            } else {
-                Err(Error::IoError(ErrorKind::InvalidData))
+    let mut files: Vec<String> = Vec::new();
+    match get_files().await {
+        Ok(file_names) => {
+            for file in file_names {
+                println!("{}", file);
+                files.push(file);
             }
         }
         Err(e) => {
-            eprintln!("Failure: vec_result");
-            return Err(e);
+            eprintln!("Failed to get file_name.\nUnderlying error: {}", e);
         }
+    }
+
+    let mut captures: Option<Vec<Vec<String>>> = None;
+    for file in files {
+        let file_name: &str = file.as_ref();
+
+        match read_file(file_name).await {
+            Ok(lines) => {
+                for line in &lines {
+                    // TODO: Check for various-sized initial input strings
+                    if line.len() > 16 && &line[..4] == "<!--" && &line[line.len() - 3..] == "-->" {
+                        let chars: Vec<char> = line.chars().collect();
+                        let unwrapped_line: String = chars[4..chars.len() - 3].iter().collect();
+                        let parts: Vec<String> = unwrapped_line
+                            .split("::::")
+                            .map(|s| s.to_string())
+                            .collect();
+
+                        if parts.len() >= 3 {
+                            for part in parts.iter().skip(1) {
+                                println!("{}", part);
+                            }
+                        }
+                        captures
+                            .get_or_insert(vec![])
+                            .push(parts.into_iter().skip(1).collect());
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Failure: vec_result");
+                return Err(e);
+            }
+        }
+    }
+    if let Some(captures) = captures {
+        Ok(captures)
+    } else {
+        Err(Error::IoError(ErrorKind::InvalidData))
     }
 }
 
-async fn read_file() -> Result<Vec<String>, Error> {
+async fn get_files() -> Result<Vec<String>, Error> {
+    let source_dir = tool::source_dir();
+    let source_dir_ref: &str = source_dir.as_ref();
+    let mut entries = tokio::fs::read_dir(source_dir_ref)
+        .await
+        .map_err(|e| Error::IoError(e.kind()))?;
+
+    let mut file_names: Vec<String> = Vec::new();
+
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| Error::IoError(e.kind()))?
+    {
+        let name: OsString = entry.file_name();
+        let name_str = name.to_string_lossy().to_string();
+
+        if name_str.starts_with("_") && name_str.ends_with(".md") {
+            file_names.push(name_str);
+        }
+    }
+
+    if file_names.is_empty() {
+        return Err(Error::FileNotFound);
+    }
+
+    Ok(file_names)
+}
+
+async fn read_file(file_name: &str) -> Result<Vec<String>, Error> {
     // TODO:Remove this paranoid file check.
     // Attempt the read and handle error if it occurs due to non-existant file.
-    let capture_path = tool::source_path("test".to_string());
+    let capture_path = tool::source_path(file_name.to_string());
+    println!("{}", capture_path);
     let capture_path_ref: &str = &capture_path;
     let (is_file, path) = file_exists(capture_path_ref).await;
 

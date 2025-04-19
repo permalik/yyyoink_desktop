@@ -1,6 +1,10 @@
-pub fn source_path(capture_file: String) -> String {
+pub fn source_dir() -> String {
     const TEST_DIR: &str = "/Users/tymalik/Docs/Git/markdown/";
-    const TEST_PREFIX: &str = "_";
-    const TEST_EXT: &str = ".md";
-    return format!("{}{}{}{}", TEST_DIR, TEST_PREFIX, capture_file, TEST_EXT);
+    return format!("{}", TEST_DIR);
+}
+
+pub fn source_path(capture_file: String) -> String {
+    let source_dir = source_dir();
+    let test_dir: &str = source_dir.as_ref();
+    return format!("{}{}", test_dir, capture_file);
 }
