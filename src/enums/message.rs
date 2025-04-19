@@ -11,4 +11,6 @@ pub enum Message {
     CaptureFormContentChanged(text_editor::Action),
     SubmitCapture,
     FileOpened(Result<PathBuf, error::Error>),
+    ShowError(Result<String, error::Error>),
+    HideError,
 }

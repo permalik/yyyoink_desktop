@@ -1,11 +1,10 @@
 [package]
 name = "yyyoink_desktop"
-version = "0.1.0"
 edition = "2021"
+version = "0.1.0"
 
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed" }
-iced = { version = "0.13.1", features = ["tokio"] }
+iced = { version = "0.13.1", features = ["advanced", "tokio"] }
 tokio = { version = "1.44.2", features = ["fs", "io-util"] }
 chrono = "0.4.40"
 palette = "0.7.4"

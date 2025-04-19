@@ -5,6 +5,17 @@ use tokio::io::AsyncWriteExt;
 
 const TEST_PATH: &str = "/Users/tymalik/Docs/Git/markdown/_test.md";
 
+pub async fn log() -> Result<String, Error> {
+    let success = true;
+
+    if success {
+        println!("hello");
+        Ok("hello".to_string())
+    } else {
+        Err(Error::IoError(ErrorKind::InvalidData))
+    }
+}
+
 pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
     match read_file().await {
         Ok(lines) => {
