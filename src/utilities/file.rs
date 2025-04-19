@@ -18,7 +18,6 @@ pub async fn log() -> Result<String, Error> {
 pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
     match read_file().await {
         Ok(lines) => {
-            // let mut parts: Vec<String>;
             let mut captures: Option<Vec<Vec<String>>> = None;
             for line in &lines {
                 // TODO: Check for various-sized initial input strings
@@ -31,12 +30,13 @@ pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
                         .collect();
 
                     if parts.len() >= 3 {
-                        println!("{}", parts[0]);
-                        println!("{}", parts[1]);
-                        println!("{}", parts[2]);
-                        println!("{}", parts[3]);
+                        for part in parts.iter().skip(1) {
+                            println!("{}", part);
+                        }
                     }
-                    captures.get_or_insert(vec![]).push(parts);
+                    captures
+                        .get_or_insert(vec![])
+                        .push(parts.into_iter().skip(1).collect());
                 }
             }
             if let Some(captures) = captures {
