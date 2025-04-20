@@ -7,12 +7,12 @@ use capture::capture_sidebar::CaptureSidebar;
 use chrono::prelude::*;
 use enums::message::Message;
 use iced::event::{self, Event};
-use iced::keyboard;
 use iced::keyboard::key;
 use iced::widget::{
-    self, button, center, column as col, container, mouse_area, opaque, row, stack, text,
-    text_editor, text_input,
+    self, button, center, column as col, container, mouse_area, opaque, pane_grid, scrollable,
+    stack, text, text_editor, text_input,
 };
+use iced::{keyboard, Border, Padding};
 use iced::{Color, Element, Font, Length, Subscription, Task};
 use utilities::file;
 
@@ -30,10 +30,18 @@ struct Yoink {
     capture_sidebar: CaptureSidebar,
     ui_error: String,
     show_error: bool,
+    panes: pane_grid::State<Pane>,
+}
+
+enum Pane {
+    CaptureSidebarPane,
+    CaptureFormPane,
 }
 
 impl Yoink {
     fn new() -> (Self, Task<Message>) {
+        let (mut panes, sidebar) = pane_grid::State::new(Pane::CaptureSidebarPane);
+        let _pane = panes.split(pane_grid::Axis::Vertical, sidebar, Pane::CaptureFormPane);
         (
             Self {
                 captures: Vec::new(),
@@ -42,6 +50,7 @@ impl Yoink {
                 capture_sidebar: CaptureSidebar::new(),
                 ui_error: String::new(),
                 show_error: false,
+                panes,
             },
             Task::perform(file::load_captures(), Message::CapturesLoaded),
         )
@@ -53,6 +62,10 @@ impl Yoink {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
+                self.panes.resize(split, ratio);
+                Task::none()
+            }
             Message::ShowError(result) => {
                 if let Ok(value) = result {
                     println!("resulting {}", value);
@@ -166,6 +179,52 @@ impl Yoink {
     }
 
     fn view(&self) -> Element<Message> {
+        let content = pane_grid::PaneGrid::new(&self.panes, |_pane, state, _is_maximized| {
+            let content: Element<_> = match state {
+                Pane::CaptureSidebarPane => self.view_capture_sidebar(),
+                Pane::CaptureFormPane => self.view_capture_pane(),
+            };
+
+            pane_grid::Content::new(content)
+        })
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .spacing(0)
+        .on_resize(10, Message::PaneResized);
+
+        // let capture_ui = row![capture_sidebar, capture_pane];
+        //
+        // let content = container(capture_ui)
+        //     .width(Length::Fill)
+        //     .height(Length::Fill);
+
+        if self.show_error {
+            let error_overlay = container(text(self.ui_error.to_string()))
+                .width(Length::Fill)
+                .height(Length::Shrink)
+                .center_x(Length::Shrink)
+                .center_y(Length::Shrink)
+                .padding(10)
+                .style(|_theme| container::Style {
+                    text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
+                    background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                });
+
+            modal(content, error_overlay, Message::HideError)
+        } else {
+            content.into()
+        }
+    }
+}
+
+impl Yoink {
+    fn hide_error(&mut self) {
+        self.show_error = false;
+    }
+
+    fn view_capture_sidebar(&self) -> Element<Message> {
         let capture_list = self
             .captures
             .iter()
@@ -174,6 +233,12 @@ impl Yoink {
                     .iter()
                     .map(|field| text(field).into())
                     .collect::<Vec<Element<Message>>>())
+                .padding(Padding {
+                    top: 10.0,
+                    right: 25.0,
+                    bottom: 10.0,
+                    left: 5.0,
+                })
                 .into()
             })
             .collect::<Vec<Element<Message>>>();
@@ -183,7 +248,57 @@ impl Yoink {
                 col![
                     text_input("Capture..", &self.capture.search)
                         .on_input(Message::CaptureSearchChanged),
-                    col(capture_list).spacing(5),
+                    scrollable(col(capture_list).spacing(0)).style(|_theme, _status| {
+                        scrollable::Style {
+                            container: container::Style {
+                                text_color: None,
+                                background: None,
+                                border: Border {
+                                    color: Color::from_rgb8(0, 0, 0),
+                                    width: 0.0,
+                                    radius: Default::default(),
+                                },
+                                shadow: Default::default(),
+                            },
+                            vertical_rail: scrollable::Rail {
+                                background: Some(iced::Background::Color(Color::from_rgb8(
+                                    180, 60, 60,
+                                ))),
+                                border: Border {
+                                    color: Color::from_rgb8(0, 0, 0),
+                                    width: 0.0,
+                                    radius: 5.0.into(),
+                                },
+                                scroller: scrollable::Scroller {
+                                    color: iced::Color::from_rgb8(120, 30, 30),
+                                    border: Border {
+                                        color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                        width: 0.0,
+                                        radius: 5.0.into(),
+                                    },
+                                },
+                            },
+                            horizontal_rail: scrollable::Rail {
+                                background: Some(iced::Background::Color(Color::from_rgb8(
+                                    180, 60, 60,
+                                ))),
+                                border: Border {
+                                    color: Color::from_rgb8(0, 0, 0),
+                                    width: 0.0,
+                                    radius: 5.0.into(),
+                                },
+                                scroller: scrollable::Scroller {
+                                    color: iced::Color::from_rgb8(15, 9, 9),
+                                    border: Border {
+                                        color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                        width: 2.0,
+                                        radius: 5.0.into(),
+                                    },
+                                },
+                            },
+                            gap: None,
+                        }
+                    }),
                 ]
                 .spacing(10),
             )
@@ -208,6 +323,11 @@ impl Yoink {
                     shadow: iced::Shadow::default(),
                 })
         };
+
+        capture_sidebar.into()
+    }
+
+    fn view_capture_pane(&self) -> Element<Message> {
         let capture_pane = if self.capture_pane.is_visible {
             container(
                 col![
@@ -251,36 +371,7 @@ impl Yoink {
                 })
         };
 
-        let capture_ui = row![capture_sidebar, capture_pane];
-
-        let content = container(capture_ui)
-            .width(Length::Fill)
-            .height(Length::Fill);
-
-        if self.show_error {
-            let error_overlay = container(text(self.ui_error.to_string()))
-                .width(Length::Fill)
-                .height(Length::Shrink)
-                .center_x(Length::Shrink)
-                .center_y(Length::Shrink)
-                .padding(10)
-                .style(|_theme| container::Style {
-                    text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
-                    background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
-                    border: iced::Border::default(),
-                    shadow: iced::Shadow::default(),
-                });
-
-            modal(content, error_overlay, Message::HideError)
-        } else {
-            content.into()
-        }
-    }
-}
-
-impl Yoink {
-    fn hide_error(&mut self) {
-        self.show_error = false;
+        capture_pane.into()
     }
 }
 

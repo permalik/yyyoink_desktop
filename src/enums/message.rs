@@ -1,6 +1,6 @@
 use super::error;
 use iced::event::Event;
-use iced::widget::text_editor;
+use iced::widget::{pane_grid, text_editor};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -15,4 +15,5 @@ pub enum Message {
     ShowError(Result<String, error::Error>),
     HideError,
     Event(Event),
+    PaneResized(pane_grid::ResizeEvent),
 }
