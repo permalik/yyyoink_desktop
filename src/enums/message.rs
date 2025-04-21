@@ -18,4 +18,5 @@ pub enum Message {
     Event(Event),
     PaneResized(pane_grid::ResizeEvent),
     Edit,
+    EditorContentChanged(text_editor::Action),
 }

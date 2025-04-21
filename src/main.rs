@@ -1,10 +1,12 @@
 mod capture;
+mod editor;
 mod enums;
 mod utilities;
 use capture::capture_models::Capture;
 use capture::capture_pane::CapturePane;
 use capture::capture_sidebar::CaptureSidebar;
 use chrono::prelude::*;
+use editor::editor_models::Editor;
 use enums::message::Message;
 use enums::pane::PaneState;
 use iced::event::{self, Event};
@@ -26,6 +28,7 @@ pub fn main() -> iced::Result {
 
 struct Yoink {
     is_capture: bool,
+    editor: Editor,
     captures: Vec<Vec<String>>,
     capture: Capture,
     capture_pane: CapturePane,
@@ -46,6 +49,7 @@ impl Yoink {
         (
             Self {
                 is_capture: true,
+                editor: Editor::new(),
                 captures: Vec::new(),
                 capture: Capture::new(),
                 capture_pane: CapturePane::new(),
@@ -65,13 +69,29 @@ impl Yoink {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Edit => {
-                println!("editing..");
-                self.is_capture = false;
+                if self.is_capture == true {
+                    self.is_capture = false;
 
-                let (mut panes, sidebar) = pane_grid::State::new(PaneState::EditorSidebarPane);
-                let _pane = panes.split(pane_grid::Axis::Vertical, sidebar, PaneState::EditorPane);
-                self.panes = panes;
+                    let (mut panes, sidebar) = pane_grid::State::new(PaneState::EditorSidebarPane);
+                    let _pane =
+                        panes.split(pane_grid::Axis::Vertical, sidebar, PaneState::EditorPane);
+                    self.panes = panes;
+                } else {
+                    self.is_capture = true;
 
+                    let (mut panes, sidebar) = pane_grid::State::new(PaneState::CaptureSidebarPane);
+                    let _pane = panes.split(
+                        pane_grid::Axis::Vertical,
+                        sidebar,
+                        PaneState::CaptureFormPane,
+                    );
+                    self.panes = panes;
+                }
+
+                Task::none()
+            }
+            Message::EditorContentChanged(action) => {
+                self.editor.editor_content.perform(action);
                 Task::none()
             }
             Message::CaptureSelected(index) => {
@@ -193,6 +213,13 @@ impl Yoink {
                     key: keyboard::Key::Named(key::Named::Enter),
                     ..
                 }) => Task::perform(async {}, |_| Message::SubmitCapture),
+                Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
+                    if let Some(result) = handle_hotkey(key, modifiers) {
+                        Task::perform(async move { result }, |msg| msg)
+                    } else {
+                        Task::none()
+                    }
+                }
                 _ => Task::none(),
             },
         }
@@ -430,7 +457,14 @@ impl Yoink {
 
     fn view_editor_pane(&self) -> Element<Message> {
         let editor_pane = if self.capture_pane.is_visible {
-            container(text("editor.."))
+            container(col![
+                text("editor.."),
+                text_editor(&self.editor.editor_content)
+                    .on_action(Message::EditorContentChanged)
+                    .height(Length::Fill)
+                    .padding(10)
+            ])
+            .padding(10)
         } else {
             container(text("editor_pane hidden.."))
         };
@@ -466,4 +500,11 @@ where
         )
     ]
     .into()
+}
+
+fn handle_hotkey(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
+    match (key.as_ref(), modifiers) {
+        (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "e" => Some(Message::Edit),
+        _ => None,
+    }
 }
