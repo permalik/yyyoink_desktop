@@ -12,7 +12,7 @@ use enums::pane::PaneState;
 use iced::event::{self, Event};
 use iced::keyboard::key;
 use iced::widget::{
-    self, button, center, column as col, container, mouse_area, opaque, pane_grid, scrollable,
+    self, button, center, column as col, container, mouse_area, opaque, pane_grid, row, scrollable,
     stack, text, text_editor, text_input,
 };
 use iced::{keyboard, Border};
@@ -312,59 +312,69 @@ impl Yoink {
         let capture_sidebar = if self.capture_sidebar.is_visible {
             container(
                 col![
-                    text_input("Capture..", &self.capture.search)
-                        .on_input(Message::CaptureSearchChanged),
-                    scrollable(col(capture_list).spacing(0)).style(|_theme, _status| {
-                        scrollable::Style {
-                            container: container::Style {
-                                text_color: None,
-                                background: None,
-                                border: Border {
-                                    color: Color::from_rgb8(0, 0, 0),
-                                    width: 0.0,
-                                    radius: Default::default(),
-                                },
-                                shadow: Default::default(),
-                            },
-                            vertical_rail: scrollable::Rail {
-                                background: Some(iced::Background::Color(Color::from_rgb8(
-                                    180, 60, 60,
-                                ))),
-                                border: Border {
-                                    color: Color::from_rgb8(0, 0, 0),
-                                    width: 0.0,
-                                    radius: 5.0.into(),
-                                },
-                                scroller: scrollable::Scroller {
-                                    color: iced::Color::from_rgb8(120, 30, 30),
+                    row![
+                        text_input("Capture..", &self.capture.search)
+                            .on_input(Message::CaptureSearchChanged),
+                        button("X")
+                    ]
+                    .height(Length::FillPortion(2))
+                    .align_y(iced::Alignment::Center),
+                    scrollable(col(capture_list).spacing(0))
+                        .style(|_theme, _status| {
+                            scrollable::Style {
+                                container: container::Style {
+                                    text_color: None,
+                                    background: None,
                                     border: Border {
-                                        color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                        color: Color::from_rgb8(0, 0, 0),
+                                        width: 0.0,
+                                        radius: Default::default(),
+                                    },
+                                    shadow: Default::default(),
+                                },
+                                vertical_rail: scrollable::Rail {
+                                    background: Some(iced::Background::Color(Color::from_rgb8(
+                                        180, 60, 60,
+                                    ))),
+                                    border: Border {
+                                        color: Color::from_rgb8(0, 0, 0),
                                         width: 0.0,
                                         radius: 5.0.into(),
                                     },
-                                },
-                            },
-                            horizontal_rail: scrollable::Rail {
-                                background: Some(iced::Background::Color(Color::from_rgb8(
-                                    180, 60, 60,
-                                ))),
-                                border: Border {
-                                    color: Color::from_rgb8(0, 0, 0),
-                                    width: 0.0,
-                                    radius: 5.0.into(),
-                                },
-                                scroller: scrollable::Scroller {
-                                    color: iced::Color::from_rgb8(15, 9, 9),
-                                    border: Border {
-                                        color: iced::Color::from_rgba8(0, 0, 0, 0.0),
-                                        width: 2.0,
-                                        radius: 5.0.into(),
+                                    scroller: scrollable::Scroller {
+                                        color: iced::Color::from_rgb8(120, 30, 30),
+                                        border: Border {
+                                            color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                            width: 0.0,
+                                            radius: 5.0.into(),
+                                        },
                                     },
                                 },
-                            },
-                            gap: None,
-                        }
-                    }),
+                                horizontal_rail: scrollable::Rail {
+                                    background: Some(iced::Background::Color(Color::from_rgb8(
+                                        180, 60, 60,
+                                    ))),
+                                    border: Border {
+                                        color: Color::from_rgb8(0, 0, 0),
+                                        width: 0.0,
+                                        radius: 5.0.into(),
+                                    },
+                                    scroller: scrollable::Scroller {
+                                        color: iced::Color::from_rgb8(15, 9, 9),
+                                        border: Border {
+                                            color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                            width: 2.0,
+                                            radius: 5.0.into(),
+                                        },
+                                    },
+                                },
+                                gap: None,
+                            }
+                        })
+                        .height(Length::FillPortion(50)),
+                    row![button("Switch").on_press(Message::Edit)]
+                        .height(Length::FillPortion(2))
+                        .align_y(iced::Alignment::Center)
                 ]
                 .spacing(10),
             )
@@ -379,17 +389,20 @@ impl Yoink {
                 shadow: iced::Shadow::default(),
             })
         } else {
-            container(text("Sidebar hidden."))
-                // .width(Length::FillPortion(2))
-                //.max_width(100)
-                .height(Length::Fill)
-                .padding(5)
-                .style(|_theme| container::Style {
-                    background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
-                    text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
-                    border: iced::Border::default(),
-                    shadow: iced::Shadow::default(),
-                })
+            container(col![
+                text("Sidebar hidden."),
+                button("Switch").on_press(Message::Edit)
+            ])
+            // .width(Length::FillPortion(2))
+            //.max_width(100)
+            .height(Length::Fill)
+            .padding(5)
+            .style(|_theme| container::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            })
         };
 
         col!(capture_sidebar).width(200).max_width(200).into()
@@ -415,7 +428,6 @@ impl Yoink {
                             border: iced::Border::default(),
                             shadow: iced::Shadow::default(),
                         }),
-                    button("Switch").on_press(Message::Edit)
                 ]
                 .spacing(10),
             )
