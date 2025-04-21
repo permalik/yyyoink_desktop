@@ -10,10 +10,12 @@ pub enum Message {
     CaptureTopicChanged(String),
     CaptureSubjectChanged(String),
     CaptureFormContentChanged(text_editor::Action),
+    CaptureSelected(usize),
     SubmitCapture,
     FileOpened(Result<PathBuf, error::Error>),
     ShowError(Result<String, error::Error>),
     HideError,
     Event(Event),
     PaneResized(pane_grid::ResizeEvent),
+    Edit,
 }

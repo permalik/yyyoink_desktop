@@ -6,13 +6,14 @@ use capture::capture_pane::CapturePane;
 use capture::capture_sidebar::CaptureSidebar;
 use chrono::prelude::*;
 use enums::message::Message;
+use enums::pane::PaneState;
 use iced::event::{self, Event};
 use iced::keyboard::key;
 use iced::widget::{
     self, button, center, column as col, container, mouse_area, opaque, pane_grid, scrollable,
     stack, text, text_editor, text_input,
 };
-use iced::{keyboard, Border, Padding};
+use iced::{keyboard, Border};
 use iced::{Color, Element, Font, Length, Subscription, Task};
 use utilities::file;
 
@@ -24,26 +25,27 @@ pub fn main() -> iced::Result {
 }
 
 struct Yoink {
+    is_capture: bool,
     captures: Vec<Vec<String>>,
     capture: Capture,
     capture_pane: CapturePane,
     capture_sidebar: CaptureSidebar,
     ui_error: String,
     show_error: bool,
-    panes: pane_grid::State<Pane>,
-}
-
-enum Pane {
-    CaptureSidebarPane,
-    CaptureFormPane,
+    panes: pane_grid::State<PaneState>,
 }
 
 impl Yoink {
     fn new() -> (Self, Task<Message>) {
-        let (mut panes, sidebar) = pane_grid::State::new(Pane::CaptureSidebarPane);
-        let _pane = panes.split(pane_grid::Axis::Vertical, sidebar, Pane::CaptureFormPane);
+        let (mut panes, sidebar) = pane_grid::State::new(PaneState::CaptureSidebarPane);
+        let _pane = panes.split(
+            pane_grid::Axis::Vertical,
+            sidebar,
+            PaneState::CaptureFormPane,
+        );
         (
             Self {
+                is_capture: true,
                 captures: Vec::new(),
                 capture: Capture::new(),
                 capture_pane: CapturePane::new(),
@@ -62,6 +64,24 @@ impl Yoink {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::Edit => {
+                println!("editing..");
+                self.is_capture = false;
+
+                let (mut panes, sidebar) = pane_grid::State::new(PaneState::EditorSidebarPane);
+                let _pane = panes.split(pane_grid::Axis::Vertical, sidebar, PaneState::EditorPane);
+                self.panes = panes;
+
+                Task::none()
+            }
+            Message::CaptureSelected(index) => {
+                if let Some(capture_data) = self.captures.get(index) {
+                    for capture in capture_data {
+                        println!("Selected capture: {}", capture);
+                    }
+                }
+                Task::none()
+            }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
                 Task::none()
@@ -180,12 +200,25 @@ impl Yoink {
 
     fn view(&self) -> Element<Message> {
         let content = pane_grid::PaneGrid::new(&self.panes, |_pane, state, _is_maximized| {
-            let content: Element<_> = match state {
-                Pane::CaptureSidebarPane => self.view_capture_sidebar(),
-                Pane::CaptureFormPane => self.view_capture_pane(),
-            };
+            if self.is_capture {
+                let content: Element<_> = match state {
+                    PaneState::CaptureSidebarPane => self.view_capture_sidebar(),
+                    PaneState::CaptureFormPane => self.view_capture_pane(),
+                    PaneState::EditorSidebarPane => self.view_editor_sidebar(),
+                    PaneState::EditorPane => self.view_editor_pane(),
+                };
 
-            pane_grid::Content::new(content)
+                pane_grid::Content::new(content)
+            } else {
+                let content: Element<_> = match state {
+                    PaneState::CaptureSidebarPane => self.view_capture_sidebar(),
+                    PaneState::CaptureFormPane => self.view_capture_pane(),
+                    PaneState::EditorSidebarPane => self.view_editor_sidebar(),
+                    PaneState::EditorPane => self.view_editor_pane(),
+                };
+
+                pane_grid::Content::new(content)
+            }
         })
         .width(Length::Fill)
         .height(Length::Fill)
@@ -228,18 +261,24 @@ impl Yoink {
         let capture_list = self
             .captures
             .iter()
-            .map(|capture| {
-                col(capture
-                    .iter()
-                    .map(|field| text(field).into())
-                    .collect::<Vec<Element<Message>>>())
-                .padding(Padding {
-                    top: 10.0,
-                    right: 25.0,
-                    bottom: 10.0,
-                    left: 5.0,
-                })
-                .into()
+            .enumerate()
+            .map(|(i, capture)| {
+                let capture_button = button(
+                    col(capture
+                        .iter()
+                        .map(|field| text(field).into())
+                        .collect::<Vec<Element<Message>>>()),
+                    // .padding(Padding {
+                    //     top: 10.0,
+                    //     right: 25.0,
+                    //     bottom: 10.0,
+                    //     left: 5.0,
+                    // }),
+                )
+                .width(Length::Fill)
+                .on_press(Message::CaptureSelected(i));
+
+                capture_button.into()
             })
             .collect::<Vec<Element<Message>>>();
 
@@ -302,7 +341,8 @@ impl Yoink {
                 ]
                 .spacing(10),
             )
-            .width(Length::FillPortion(2))
+            // .width(Length::FillPortion(2))
+            //.max_width(100)
             .height(Length::Fill)
             .padding(5)
             .style(|_theme| container::Style {
@@ -313,7 +353,8 @@ impl Yoink {
             })
         } else {
             container(text("Sidebar hidden."))
-                .width(Length::FillPortion(2))
+                // .width(Length::FillPortion(2))
+                //.max_width(100)
                 .height(Length::Fill)
                 .padding(5)
                 .style(|_theme| container::Style {
@@ -324,7 +365,8 @@ impl Yoink {
                 })
         };
 
-        capture_sidebar.into()
+        col!(capture_sidebar).width(200).max_width(200).into()
+        // capture_sidebar.into()
     }
 
     fn view_capture_pane(&self) -> Element<Message> {
@@ -346,6 +388,7 @@ impl Yoink {
                             border: iced::Border::default(),
                             shadow: iced::Shadow::default(),
                         }),
+                    button("Switch").on_press(Message::Edit)
                 ]
                 .spacing(10),
             )
@@ -371,7 +414,28 @@ impl Yoink {
                 })
         };
 
-        capture_pane.into()
+        col!(capture_pane).into()
+        // capture_pane.into()
+    }
+
+    fn view_editor_sidebar(&self) -> Element<Message> {
+        let editor_sidebar = if self.capture_sidebar.is_visible {
+            container(text("editor_sidebar.."))
+        } else {
+            container(text("editor_sidebar hidden.."))
+        };
+
+        col!(editor_sidebar).width(200).max_width(200).into()
+    }
+
+    fn view_editor_pane(&self) -> Element<Message> {
+        let editor_pane = if self.capture_pane.is_visible {
+            container(text("editor.."))
+        } else {
+            container(text("editor_pane hidden.."))
+        };
+
+        col!(editor_pane).into()
     }
 }
 
