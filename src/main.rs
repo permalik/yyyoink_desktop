@@ -95,12 +95,19 @@ impl Yoink {
                 Task::none()
             }
             Message::CaptureSelected(index) => {
+                // if let Ok(capture) = result {
+                //     println!("{}", capture);
+                // }
                 if let Some(capture_data) = self.captures.get(index) {
+                    //self.capture.open_capture = Some(capture.to_string_lossy().to_string());
                     for capture in capture_data {
-                        println!("Selected capture: {}", capture);
+                        println!("CaptureSelected: {}", capture);
                     }
+                    let capture_input = capture_data.clone();
+                    Task::perform(file::capture_opened(capture_input), Message::CaptureOpened)
+                } else {
+                    Task::none()
                 }
-                Task::none()
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
@@ -190,6 +197,23 @@ impl Yoink {
                 }
                 Task::none()
             }
+            Message::CaptureOpened(result) => {
+                if let Ok((timestamp, path, subject)) = result {
+                    self.capture.opened_capture = Some((timestamp, path, subject));
+
+                    if let Some((ref timestamp_str, ref path_str, ref subject_str)) =
+                        self.capture.opened_capture
+                    {
+                        println!(
+                            "CaptureOpened {} {} {}",
+                            timestamp_str,
+                            path_str.to_string_lossy().to_string(),
+                            subject_str
+                        );
+                    }
+                }
+                Task::none()
+            }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Tab),
@@ -214,7 +238,7 @@ impl Yoink {
                     ..
                 }) => Task::perform(async {}, |_| Message::SubmitCapture),
                 Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
-                    if let Some(result) = handle_hotkey(key, modifiers) {
+                    if let Some(result) = file::handle_hotkey(key, modifiers) {
                         Task::perform(async move { result }, |msg| msg)
                     } else {
                         Task::none()
@@ -319,7 +343,7 @@ impl Yoink {
                     ]
                     .height(Length::FillPortion(2))
                     .align_y(iced::Alignment::Center),
-                    scrollable(col(capture_list).spacing(0))
+                    scrollable(col(capture_list).spacing(5))
                         .style(|_theme, _status| {
                             scrollable::Style {
                                 container: container::Style {
@@ -512,11 +536,4 @@ where
         )
     ]
     .into()
-}
-
-fn handle_hotkey(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
-    match (key.as_ref(), modifiers) {
-        (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "e" => Some(Message::Edit),
-        _ => None,
-    }
 }

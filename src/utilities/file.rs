@@ -1,5 +1,7 @@
 use super::tool;
 use crate::enums::error::Error;
+use crate::enums::message::Message;
+use iced::keyboard;
 use std::ffi::OsString;
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -220,4 +222,29 @@ async fn file_exists(current_path: &str) -> (bool, PathBuf) {
         .expect("Failed: Unable to determine if file exists.");
 
     return (file_exists, path);
+}
+
+pub async fn capture_opened(capture: Vec<String>) -> Result<(String, PathBuf, String), Error> {
+    for c in &capture {
+        println!("capture_opened: {}", c);
+    }
+
+    match (capture.get(0), capture.get(1), capture.get(2)) {
+        (Some(timestamp), Some(path), Some(subject)) => {
+            let capture_path = format!("_{}.md", path);
+            Ok((
+                timestamp.to_string(),
+                PathBuf::from(capture_path),
+                subject.to_string(),
+            ))
+        }
+        _ => return Err(Error::IoError(ErrorKind::NotFound)),
+    }
+}
+
+pub fn handle_hotkey(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
+    match (key.as_ref(), modifiers) {
+        (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "e" => Some(Message::Edit),
+        _ => None,
+    }
 }
