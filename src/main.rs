@@ -11,6 +11,7 @@ use enums::message::Message;
 use enums::pane::PaneState;
 use iced::event::{self, Event};
 use iced::keyboard::key;
+use iced::widget::text_editor::Content;
 use iced::widget::{
     self, button, center, column as col, container, mouse_area, opaque, pane_grid, row, scrollable,
     stack, text, text_editor, text_input,
@@ -88,6 +89,17 @@ impl Yoink {
                     self.panes = panes;
                 }
 
+                Task::none()
+            }
+            Message::SetInitialEditorText(result) => {
+                let mut content_input = String::new();
+                if let Ok(content) = result {
+                    for line in &content {
+                        content_input.push_str(line);
+                        content_input.push_str("\n");
+                    }
+                    self.editor.editor_content = Content::with_text(content_input.as_ref());
+                }
                 Task::none()
             }
             Message::EditorContentChanged(action) => {
@@ -204,15 +216,27 @@ impl Yoink {
                     if let Some((ref timestamp_str, ref path_str, ref subject_str)) =
                         self.capture.opened_capture
                     {
-                        println!(
-                            "CaptureOpened {} {} {}",
+                        self.capture.current_capture = format!(
+                            "{} {} {}",
                             timestamp_str,
                             path_str.to_string_lossy().to_string(),
                             subject_str
                         );
+                        // self.editor.editor_content.text() = "New Content".to_string();
+                        // file::read_capture
                     }
                 }
-                Task::none()
+                if self.capture.current_capture != "Editor..".to_string() {
+                    Task::batch([
+                        Task::perform(
+                            file::read_capture("_test.md"),
+                            Message::SetInitialEditorText,
+                        ),
+                        Task::perform(async {}, |_| Message::Edit),
+                    ])
+                } else {
+                    Task::none()
+                }
             }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -494,7 +518,7 @@ impl Yoink {
     fn view_editor_pane(&self) -> Element<Message> {
         let editor_pane = if self.capture_pane.is_visible {
             container(col![
-                text("editor.."),
+                text(self.capture.current_capture.clone()),
                 text_editor(&self.editor.editor_content)
                     .on_action(Message::EditorContentChanged)
                     .height(Length::Fill)

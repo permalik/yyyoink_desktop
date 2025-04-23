@@ -9,6 +9,7 @@ pub struct Capture {
     pub form_content: text_editor::Content,
     pub updated_file: Option<String>,
     pub opened_capture: Option<(String, PathBuf, String)>,
+    pub current_capture: String,
 }
 
 impl Capture {
@@ -20,6 +21,7 @@ impl Capture {
             form_content: text_editor::Content::new(),
             updated_file: None,
             opened_capture: None,
+            current_capture: "Editor..".to_string(),
         }
     }
 }

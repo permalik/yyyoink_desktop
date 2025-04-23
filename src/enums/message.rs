@@ -20,4 +20,5 @@ pub enum Message {
     PaneResized(pane_grid::ResizeEvent),
     Edit,
     EditorContentChanged(text_editor::Action),
+    SetInitialEditorText(Result<Vec<String>, error::Error>),
 }
