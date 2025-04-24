@@ -244,6 +244,7 @@ pub async fn read_capture(
         let mut before: Vec<String> = Vec::new();
         let mut content: Vec<String> = Vec::new();
         let mut after: Vec<String> = Vec::new();
+
         for line in &file_content {
             if line.starts_with(prefix) && line.ends_with(suffix) {
                 if line == capture_string {}
