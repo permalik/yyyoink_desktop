@@ -12,6 +12,7 @@ pub enum Message {
     CaptureFormContentChanged(text_editor::Action),
     CaptureSelected(usize),
     CaptureOpened(Result<(String, PathBuf, String), error::Error>),
+    UpdateCapture,
     SubmitCapture,
     FileOpened(Result<PathBuf, error::Error>),
     ShowError(Result<String, error::Error>),
@@ -20,5 +21,5 @@ pub enum Message {
     PaneResized(pane_grid::ResizeEvent),
     Edit,
     EditorContentChanged(text_editor::Action),
-    SetInitialEditorText(Result<Vec<String>, error::Error>),
+    SetInitialEditorText(Result<(Vec<String>, Vec<String>, Vec<String>), error::Error>),
 }

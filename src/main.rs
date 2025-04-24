@@ -93,7 +93,13 @@ impl Yoink {
             }
             Message::SetInitialEditorText(result) => {
                 let mut content_input = String::new();
-                if let Ok(content) = result {
+                if let Ok((before, content, after)) = result {
+                    for line in &before {
+                        self.capture.before.push_str(line);
+                    }
+                    for line in &after {
+                        self.capture.after.push_str(line);
+                    }
                     for line in &content {
                         content_input.push_str(line);
                         content_input.push_str("\n");
@@ -202,6 +208,10 @@ impl Yoink {
                     )
                 }
             }
+            Message::UpdateCapture => {
+                println!("Updated Capture");
+                Task::none()
+            }
             Message::FileOpened(result) => {
                 if let Ok(path) = result {
                     self.capture.updated_file = Some(path.to_string_lossy().to_string());
@@ -216,11 +226,14 @@ impl Yoink {
                     if let Some((ref timestamp_str, ref path_str, ref subject_str)) =
                         self.capture.opened_capture
                     {
+                        self.capture.current_capture_timestamp = timestamp_str.to_string();
+                        self.capture.current_capture_file = path_str.to_string_lossy().to_string();
+                        self.capture.current_capture_subject = subject_str.to_string();
                         self.capture.current_capture = format!(
                             "{} {} {}",
-                            timestamp_str,
-                            path_str.to_string_lossy().to_string(),
-                            subject_str
+                            self.capture.current_capture_timestamp,
+                            self.capture.current_capture_file,
+                            self.capture.current_capture_subject,
                         );
                         // self.editor.editor_content.text() = "New Content".to_string();
                         // file::read_capture
@@ -229,7 +242,11 @@ impl Yoink {
                 if self.capture.current_capture != "Editor..".to_string() {
                     Task::batch([
                         Task::perform(
-                            file::read_capture("_test.md"),
+                            file::read_capture(
+                                self.capture.current_capture_timestamp.as_ref(),
+                                "_test.md",
+                                self.capture.current_capture_subject.as_ref(),
+                            ),
                             Message::SetInitialEditorText,
                         ),
                         Task::perform(async {}, |_| Message::Edit),
@@ -518,7 +535,10 @@ impl Yoink {
     fn view_editor_pane(&self) -> Element<Message> {
         let editor_pane = if self.capture_pane.is_visible {
             container(col![
-                text(self.capture.current_capture.clone()),
+                row![
+                    text(self.capture.current_capture.clone()),
+                    button("s").on_press(Message::UpdateCapture)
+                ],
                 text_editor(&self.editor.editor_content)
                     .on_action(Message::EditorContentChanged)
                     .height(Length::Fill)

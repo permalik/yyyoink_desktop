@@ -209,22 +209,48 @@ pub async fn write_file(capture_file: String, capture_string: String) -> Result<
     }
 }
 
-pub async fn read_capture(file_name: &str) -> Result<Vec<String>, Error> {
+pub async fn read_capture(
+    timestamp: &str,
+    file_name: &str,
+    subject: &str,
+) -> Result<(Vec<String>, Vec<String>, Vec<String>), Error> {
     let capture_path = tool::source_path(file_name.to_string());
     println!("{}", capture_path);
     let capture_path_ref: &str = &capture_path;
     let (is_file, path) = file_exists(capture_path_ref).await;
 
     if is_file {
+        println!("{}{}", timestamp, subject);
+        let mut file_content: Vec<String> = Vec::new();
         let bytes = tokio::fs::read(&path)
             .await
             .map_err(|e| Error::IoError(e.kind()))?;
         if let Ok(string) = String::from_utf8(bytes.clone()) {
-            let lines: Vec<String> = string.lines().map(|s| s.to_string()).collect();
-            Ok(lines)
+            file_content = string.lines().map(|s| s.to_string()).collect();
         } else {
             Err(Error::IoError(ErrorKind::InvalidData))
         }
+
+        // <!--yoink::::2025-04-16 22:49:23::::test::::Thisthing-->
+        let prefix = "<!--yoink";
+        let delimiter = "::::";
+        let topic = &file_name[1..file_name.len() - 3];
+        let suffix = "-->";
+        let capture_string = format!(
+            "{}{}{}{}{}{}{}{}",
+            prefix, delimiter, timestamp, delimiter, topic, delimiter, subject, suffix
+        );
+
+        let mut before: Vec<String> = Vec::new();
+        let mut content: Vec<String> = Vec::new();
+        let mut after: Vec<String> = Vec::new();
+        for line in &file_content {
+            if line.starts_with(prefix) && line.ends_with(suffix) {
+                if line == capture_string {}
+            }
+        }
+
+        Ok((before, content, after))
     } else {
         eprintln!("Failed to read file. File does not exist.");
         Err(Error::FileNotFound)
