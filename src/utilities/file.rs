@@ -241,6 +241,41 @@ pub async fn read_capture(
             prefix, delimiter, timestamp, delimiter, topic, delimiter, subject, suffix
         );
 
+        // TODO: implement
+        // let mut before: (String, Vec<String>) = (String::new(), Vec::new());
+        // let mut content: (String, Vec<String>) = (String::new(), Vec::new());
+        // let mut after: (String, Vec<String>) = (String::new(), Vec::new());
+        // let mut sections: Vec<(String, Vec<String>)> = Vec::new();
+        // let mut current_section: Option<(String, Vec<String>)> = None;
+        // for line in file_content.iter() {
+        //     if line.starts_with("<!--yoink") && line.ends_with("-->") {
+        //         if let Some((header, lines)) = current_section.take() {
+        //             sections.push((header, lines));
+        //         }
+        //
+        //         current_section = Some((line.to_string(), Vec::new()));
+        //     } else if let Some((_, ref mut lines)) = current_section {
+        //         lines.push(line.to_string());
+        //     }
+        // }
+        //
+        // if let Some((header, lines)) = current_section {
+        //     sections.push((header, lines));
+        // }
+        //
+        // for (header, lines) in sections {
+        //     if header == middle {
+        //         content.0 = header;
+        //         content.1.extend(lines);
+        //     } else if before.1.is_empty() || content.1.is_empty() {
+        //         before.0 = header;
+        //         before.1.extend(lines);
+        //     } else {
+        //         after.0 = header;
+        //         after.1.extend(lines);
+        //     }
+        // }
+
         let mut before: Vec<String> = Vec::new();
         let mut content: Vec<String> = Vec::new();
         let mut after: Vec<String> = Vec::new();
