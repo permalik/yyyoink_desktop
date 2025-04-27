@@ -23,7 +23,6 @@ pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
     match get_files().await {
         Ok(file_names) => {
             for file in file_names {
-                println!("{}", file);
                 files.push(file);
             }
         }
@@ -48,11 +47,6 @@ pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
                             .map(|s| s.to_string())
                             .collect();
 
-                        if parts.len() >= 3 {
-                            for part in parts.iter().skip(1) {
-                                println!("{}", part);
-                            }
-                        }
                         captures
                             .get_or_insert(vec![])
                             .push(parts.into_iter().skip(1).collect());
@@ -105,7 +99,6 @@ async fn read_file(file_name: &str) -> Result<Vec<String>, Error> {
     // TODO:Remove this paranoid file check.
     // Attempt the read and handle error if it occurs due to non-existant file.
     let capture_path = tool::source_path(file_name.to_string());
-    println!("{}", capture_path);
     let capture_path_ref: &str = &capture_path;
     let (is_file, path) = file_exists(capture_path_ref).await;
 
@@ -348,6 +341,9 @@ pub async fn capture_opened(capture: Vec<String>) -> Result<(String, PathBuf, St
 pub fn handle_hotkey(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
     match (key.as_ref(), modifiers) {
         (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "e" => Some(Message::Edit),
+        (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "s" => {
+            Some(Message::UpdateCapture)
+        }
         _ => None,
     }
 }

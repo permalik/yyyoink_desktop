@@ -18,6 +18,7 @@ use iced::widget::{
 };
 use iced::{keyboard, Border};
 use iced::{Color, Element, Font, Length, Subscription, Task};
+use std::time::Instant;
 use utilities::file;
 
 pub fn main() -> iced::Result {
@@ -37,6 +38,7 @@ struct Yoink {
     ui_error: String,
     show_error: bool,
     panes: pane_grid::State<PaneState>,
+    last_updated: Instant,
 }
 
 impl Yoink {
@@ -58,6 +60,7 @@ impl Yoink {
                 ui_error: String::new(),
                 show_error: false,
                 panes,
+                last_updated: Instant::now(),
             },
             Task::perform(file::load_captures(), Message::CapturesLoaded),
         )
@@ -94,6 +97,9 @@ impl Yoink {
             Message::FileWritten(result) => {
                 if let Ok(path) = result {
                     println!("Written to {}", path.display());
+                    self.capture.before = "".to_string();
+                    self.capture.after = "".to_string();
+                    self.editor.editor_content = Content::with_text("");
                 }
 
                 Task::perform(file::load_captures(), Message::CapturesReloaded)
@@ -101,6 +107,9 @@ impl Yoink {
             Message::SetInitialEditorText(result) => {
                 let mut content_input = String::new();
                 if let Ok((before, content, after)) = result {
+                    self.capture.before = "".to_string();
+                    self.capture.after = "".to_string();
+                    self.editor.editor_content = Content::with_text("");
                     for (header, lines) in before {
                         self.capture
                             .before
@@ -124,13 +133,11 @@ impl Yoink {
             }
             Message::EditorContentChanged(action) => {
                 self.editor.editor_content.perform(action);
+                self.editor.is_saved = false;
                 Task::none()
             }
             Message::CaptureSelected(index) => {
                 if let Some(capture_data) = self.captures.get(index) {
-                    for capture in capture_data {
-                        println!("CaptureSelected: {}", capture);
-                    }
                     let capture_input = capture_data.clone();
                     Task::perform(file::capture_opened(capture_input), Message::CaptureOpened)
                 } else {
@@ -163,8 +170,6 @@ impl Yoink {
                     self.captures = value;
                 }
 
-                self.is_capture = true;
-
                 let (mut panes, sidebar) = pane_grid::State::new(PaneState::CaptureSidebarPane);
                 let _pane = panes.split(
                     pane_grid::Axis::Vertical,
@@ -172,7 +177,8 @@ impl Yoink {
                     PaneState::CaptureFormPane,
                 );
                 self.panes = panes;
-
+                self.is_capture = true;
+                self.editor.is_saved = true;
                 Task::none()
             }
             Message::CaptureSearchChanged(value) => {
@@ -324,8 +330,13 @@ impl Yoink {
                     ..
                 }) => Task::perform(async {}, |_| Message::SubmitCapture),
                 Event::Keyboard(keyboard::Event::KeyPressed { key, modifiers, .. }) => {
-                    if let Some(result) = file::handle_hotkey(key, modifiers) {
-                        Task::perform(async move { result }, |msg| msg)
+                    let now = Instant::now();
+                    if now.duration_since(self.last_updated).as_millis() > 300 {
+                        if let Some(result) = file::handle_hotkey(key, modifiers) {
+                            Task::perform(async move { result }, |msg| msg)
+                        } else {
+                            Task::none()
+                        }
                     } else {
                         Task::none()
                     }
@@ -578,7 +589,11 @@ impl Yoink {
 
     fn view_editor_sidebar(&self) -> Element<Message> {
         let editor_sidebar = if self.capture_sidebar.is_visible {
-            container(text("editor_sidebar.."))
+            container(col![
+                text("editor_sidebar.."),
+                text("Some scrollable files.."),
+                row![button("s").on_press(Message::UpdateCapture)]
+            ])
         } else {
             container(text("editor_sidebar hidden.."))
         };
@@ -589,11 +604,7 @@ impl Yoink {
     fn view_editor_pane(&self) -> Element<Message> {
         let editor_pane = if self.capture_pane.is_visible {
             container(col![
-                row![
-                    text(self.capture.current_capture.clone()),
-                    button("s").on_press(Message::UpdateCapture)
-                ]
-                .align_y(iced::Alignment::Center),
+                row![text(self.capture.current_capture.clone()),].align_y(iced::Alignment::Center),
                 text_editor(&self.editor.editor_content)
                     .on_action(Message::EditorContentChanged)
                     .height(Length::Fill)
