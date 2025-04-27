@@ -125,7 +125,7 @@ async fn read_file(file_name: &str) -> Result<Vec<String>, Error> {
     }
 }
 
-pub async fn write_file(capture_file: String, capture_string: String) -> Result<PathBuf, Error> {
+pub async fn append_file(capture_file: String, capture_string: String) -> Result<PathBuf, Error> {
     let capture_path = tool::source_path(capture_file);
     let capture_path_ref: &str = &capture_path;
     let (is_file, path) = file_exists(capture_path_ref).await;
@@ -209,11 +209,46 @@ pub async fn write_file(capture_file: String, capture_string: String) -> Result<
     }
 }
 
+pub async fn write_file(capture_file: String, capture_string: String) -> Result<PathBuf, Error> {
+    let capture_path = tool::source_path(capture_file);
+    let capture_path_ref: &str = &capture_path;
+    let (_is_file, path) = file_exists(capture_path_ref).await;
+
+    let capture_bytes: &[u8] = capture_string.as_bytes();
+    match tokio::fs::write(&path, capture_bytes).await {
+        Ok(_) => {
+            println!("Wrote to file {}.", path.display());
+            Ok(path)
+        }
+        Err(e) => {
+            let err = match e.kind() {
+                ErrorKind::PermissionDenied => Error::PermissionDenied,
+                ErrorKind::NotFound => Error::FileNotFound,
+                kind => Error::IoError(kind),
+            };
+            eprintln!(
+                "Failed to write file {}: {}\nUnderlying error: {}",
+                path.display(),
+                err,
+                e
+            );
+            Err(err)
+        }
+    }
+}
+
 pub async fn read_capture(
     timestamp: &str,
     file_name: &str,
     subject: &str,
-) -> Result<(Vec<String>, Vec<String>, Vec<String>), Error> {
+) -> Result<
+    (
+        Vec<(String, Vec<String>)>,
+        (String, Vec<String>),
+        Vec<(String, Vec<String>)>,
+    ),
+    Error,
+> {
     let capture_path = tool::source_path(file_name.to_string());
     println!("{}", capture_path);
     let capture_path_ref: &str = &capture_path;
@@ -228,7 +263,7 @@ pub async fn read_capture(
         if let Ok(string) = String::from_utf8(bytes.clone()) {
             file_content = string.lines().map(|s| s.to_string()).collect();
         } else {
-            Err(Error::IoError(ErrorKind::InvalidData))
+            println!("Unable to convert bytes to string.");
         }
 
         // <!--yoink::::2025-04-16 22:49:23::::test::::Thisthing-->
@@ -240,49 +275,37 @@ pub async fn read_capture(
             "{}{}{}{}{}{}{}{}",
             prefix, delimiter, timestamp, delimiter, topic, delimiter, subject, suffix
         );
+        let mut before: Vec<(String, Vec<String>)> = Vec::new();
+        let mut content: (String, Vec<String>) = (String::new(), Vec::new());
+        let mut after: Vec<(String, Vec<String>)> = Vec::new();
+        let mut sections: Vec<(String, Vec<String>)> = Vec::new();
+        let mut current_section: Option<(String, Vec<String>)> = None;
+        for line in file_content.iter() {
+            if line.starts_with("<!--yoink") && line.ends_with("-->") {
+                if let Some((header, lines)) = current_section.take() {
+                    sections.push((header, lines));
+                }
 
-        // TODO: implement
-        // let mut before: (String, Vec<String>) = (String::new(), Vec::new());
-        // let mut content: (String, Vec<String>) = (String::new(), Vec::new());
-        // let mut after: (String, Vec<String>) = (String::new(), Vec::new());
-        // let mut sections: Vec<(String, Vec<String>)> = Vec::new();
-        // let mut current_section: Option<(String, Vec<String>)> = None;
-        // for line in file_content.iter() {
-        //     if line.starts_with("<!--yoink") && line.ends_with("-->") {
-        //         if let Some((header, lines)) = current_section.take() {
-        //             sections.push((header, lines));
-        //         }
-        //
-        //         current_section = Some((line.to_string(), Vec::new()));
-        //     } else if let Some((_, ref mut lines)) = current_section {
-        //         lines.push(line.to_string());
-        //     }
-        // }
-        //
-        // if let Some((header, lines)) = current_section {
-        //     sections.push((header, lines));
-        // }
-        //
-        // for (header, lines) in sections {
-        //     if header == middle {
-        //         content.0 = header;
-        //         content.1.extend(lines);
-        //     } else if before.1.is_empty() || content.1.is_empty() {
-        //         before.0 = header;
-        //         before.1.extend(lines);
-        //     } else {
-        //         after.0 = header;
-        //         after.1.extend(lines);
-        //     }
-        // }
+                current_section = Some((line.to_string(), Vec::new()));
+            } else if let Some((_, ref mut lines)) = current_section {
+                lines.push(line.to_string());
+            }
+        }
 
-        let mut before: Vec<String> = Vec::new();
-        let mut content: Vec<String> = Vec::new();
-        let mut after: Vec<String> = Vec::new();
+        if let Some((header, lines)) = current_section {
+            sections.push((header, lines));
+        }
 
-        for line in &file_content {
-            if line.starts_with(prefix) && line.ends_with(suffix) {
-                if line == capture_string {}
+        let mut found_content = false;
+        for (header, lines) in sections {
+            if header == capture_string {
+                content.0 = header;
+                content.1.extend(lines);
+                found_content = true;
+            } else if !found_content {
+                before.push((header, lines));
+            } else {
+                after.push((header, lines));
             }
         }
 
@@ -309,10 +332,6 @@ async fn file_exists(current_path: &str) -> (bool, PathBuf) {
 }
 
 pub async fn capture_opened(capture: Vec<String>) -> Result<(String, PathBuf, String), Error> {
-    for c in &capture {
-        println!("capture_opened: {}", c);
-    }
-
     match (capture.get(0), capture.get(1), capture.get(2)) {
         (Some(timestamp), Some(path), Some(subject)) => {
             let capture_path = format!("_{}.md", path);

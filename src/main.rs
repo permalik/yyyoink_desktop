@@ -91,20 +91,52 @@ impl Yoink {
 
                 Task::none()
             }
+            Message::FileWritten(result) => {
+                if let Ok(path) = result {
+                    println!("Written to {}", path.display());
+                }
+                if self.is_capture == true {
+                    self.is_capture = false;
+
+                    let (mut panes, sidebar) = pane_grid::State::new(PaneState::EditorSidebarPane);
+                    let _pane =
+                        panes.split(pane_grid::Axis::Vertical, sidebar, PaneState::EditorPane);
+                    self.panes = panes;
+                } else {
+                    self.is_capture = true;
+
+                    let (mut panes, sidebar) = pane_grid::State::new(PaneState::CaptureSidebarPane);
+                    let _pane = panes.split(
+                        pane_grid::Axis::Vertical,
+                        sidebar,
+                        PaneState::CaptureFormPane,
+                    );
+                    self.panes = panes;
+                }
+
+                Task::none()
+            }
             Message::SetInitialEditorText(result) => {
                 let mut content_input = String::new();
                 if let Ok((before, content, after)) = result {
-                    for line in &before {
-                        self.capture.before.push_str(line);
+                    for (header, lines) in before {
+                        self.capture
+                            .before
+                            .push_str(&format!("{}\n", header.trim()));
+                        for line in lines {
+                            self.capture.before.push_str(&format!("{}\n", line.trim()));
+                        }
                     }
-                    for line in &after {
-                        self.capture.after.push_str(line);
+                    for (header, lines) in after {
+                        self.capture.after.push_str(&format!("{}\n", header.trim()));
+                        for line in lines {
+                            self.capture.after.push_str(&format!("{}\n", line.trim()));
+                        }
                     }
-                    for line in &content {
-                        content_input.push_str(line);
-                        content_input.push_str("\n");
+                    for line in content.1 {
+                        content_input.push_str(&format!("{}\n", line.trim()));
                     }
-                    self.editor.editor_content = Content::with_text(content_input.as_ref());
+                    self.editor.editor_content = Content::with_text(&content_input);
                 }
                 Task::none()
             }
@@ -113,11 +145,7 @@ impl Yoink {
                 Task::none()
             }
             Message::CaptureSelected(index) => {
-                // if let Ok(capture) = result {
-                //     println!("{}", capture);
-                // }
                 if let Some(capture_data) = self.captures.get(index) {
-                    //self.capture.open_capture = Some(capture.to_string_lossy().to_string());
                     for capture in capture_data {
                         println!("CaptureSelected: {}", capture);
                     }
@@ -203,14 +231,36 @@ impl Yoink {
                     let capture_string = format!("{}{}", spec_string, content_string);
 
                     Task::perform(
-                        file::write_file(form_topic, capture_string),
+                        file::append_file(form_topic, capture_string),
                         Message::FileOpened,
                     )
                 }
             }
             Message::UpdateCapture => {
-                println!("Updated Capture");
-                Task::none()
+                if self.editor.editor_content.text().is_empty() {
+                    self.ui_error = "Submission failed: Inputs cannot be null.".to_string();
+                    Task::perform(file::log(), Message::ShowError)
+                } else {
+                    let before_content = &self.capture.before;
+                    let utc = Utc::now();
+                    let local_timestamp = utc.with_timezone(&Local).to_string();
+                    let timestamp = &local_timestamp[..19].to_string();
+                    let file = self.capture.current_capture_file.clone();
+                    let trimmed_file = &file[1..file.len() - 3];
+                    let subject = self.capture.current_capture_subject.clone();
+                    let editor_header = format!(
+                        "<!--yoink::::{}::::{}::::{}-->\n",
+                        timestamp, trimmed_file, subject
+                    );
+                    let editor_content = self.editor.editor_content.text();
+                    let after_content = &self.capture.after;
+                    let content = format!(
+                        "{}{}{}\n{}",
+                        before_content, editor_header, editor_content, after_content
+                    );
+
+                    Task::perform(file::write_file(file, content), Message::FileWritten)
+                }
             }
             Message::FileOpened(result) => {
                 if let Ok(path) = result {
@@ -235,18 +285,14 @@ impl Yoink {
                             self.capture.current_capture_file,
                             self.capture.current_capture_subject,
                         );
-                        // self.editor.editor_content.text() = "New Content".to_string();
-                        // file::read_capture
                     }
                 }
                 if self.capture.current_capture != "Editor..".to_string() {
+                    let timestamp = self.capture.current_capture_timestamp.clone();
+                    let subject = self.capture.current_capture_subject.clone();
                     Task::batch([
                         Task::perform(
-                            file::read_capture(
-                                self.capture.current_capture_timestamp.as_ref(),
-                                "_test.md",
-                                self.capture.current_capture_subject.as_ref(),
-                            ),
+                            async move { file::read_capture(&timestamp, "_test.md", &subject).await },
                             Message::SetInitialEditorText,
                         ),
                         Task::perform(async {}, |_| Message::Edit),
@@ -317,12 +363,6 @@ impl Yoink {
         .spacing(0)
         .on_resize(10, Message::PaneResized);
 
-        // let capture_ui = row![capture_sidebar, capture_pane];
-        //
-        // let content = container(capture_ui)
-        //     .width(Length::Fill)
-        //     .height(Length::Fill);
-
         if self.show_error {
             let error_overlay = container(text(self.ui_error.to_string()))
                 .width(Length::Fill)
@@ -368,7 +408,21 @@ impl Yoink {
                     // }),
                 )
                 .width(Length::Fill)
-                .on_press(Message::CaptureSelected(i));
+                .on_press(Message::CaptureSelected(i))
+                .style(|_theme, status| match status {
+                    button::Status::Hovered => button::Style {
+                        background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
+                        text_color: iced::Color::from_rgb8(255, 224, 181),
+                        border: iced::Border::default(),
+                        shadow: iced::Shadow::default(),
+                    },
+                    _ => button::Style {
+                        background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                        text_color: iced::Color::from_rgb8(255, 224, 181),
+                        border: iced::Border::default(),
+                        shadow: iced::Shadow::default(),
+                    },
+                });
 
                 capture_button.into()
             })
@@ -471,7 +525,6 @@ impl Yoink {
         };
 
         col!(capture_sidebar).width(200).max_width(200).into()
-        // capture_sidebar.into()
     }
 
     fn view_capture_pane(&self) -> Element<Message> {
@@ -519,7 +572,6 @@ impl Yoink {
         };
 
         col!(capture_pane).into()
-        // capture_pane.into()
     }
 
     fn view_editor_sidebar(&self) -> Element<Message> {
@@ -538,7 +590,8 @@ impl Yoink {
                 row![
                     text(self.capture.current_capture.clone()),
                     button("s").on_press(Message::UpdateCapture)
-                ],
+                ]
+                .align_y(iced::Alignment::Center),
                 text_editor(&self.editor.editor_content)
                     .on_action(Message::EditorContentChanged)
                     .height(Length::Fill)
