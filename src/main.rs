@@ -95,26 +95,8 @@ impl Yoink {
                 if let Ok(path) = result {
                     println!("Written to {}", path.display());
                 }
-                if self.is_capture == true {
-                    self.is_capture = false;
 
-                    let (mut panes, sidebar) = pane_grid::State::new(PaneState::EditorSidebarPane);
-                    let _pane =
-                        panes.split(pane_grid::Axis::Vertical, sidebar, PaneState::EditorPane);
-                    self.panes = panes;
-                } else {
-                    self.is_capture = true;
-
-                    let (mut panes, sidebar) = pane_grid::State::new(PaneState::CaptureSidebarPane);
-                    let _pane = panes.split(
-                        pane_grid::Axis::Vertical,
-                        sidebar,
-                        PaneState::CaptureFormPane,
-                    );
-                    self.panes = panes;
-                }
-
-                Task::none()
+                Task::perform(file::load_captures(), Message::CapturesReloaded)
             }
             Message::SetInitialEditorText(result) => {
                 let mut content_input = String::new();
@@ -136,7 +118,7 @@ impl Yoink {
                     for line in content.1 {
                         content_input.push_str(&format!("{}\n", line.trim()));
                     }
-                    self.editor.editor_content = Content::with_text(&content_input);
+                    self.editor.editor_content = Content::with_text(&content_input.trim());
                 }
                 Task::none()
             }
@@ -174,6 +156,23 @@ impl Yoink {
                 if let Ok(value) = result {
                     self.captures = value;
                 }
+                Task::none()
+            }
+            Message::CapturesReloaded(result) => {
+                if let Ok(value) = result {
+                    self.captures = value;
+                }
+
+                self.is_capture = true;
+
+                let (mut panes, sidebar) = pane_grid::State::new(PaneState::CaptureSidebarPane);
+                let _pane = panes.split(
+                    pane_grid::Axis::Vertical,
+                    sidebar,
+                    PaneState::CaptureFormPane,
+                );
+                self.panes = panes;
+
                 Task::none()
             }
             Message::CaptureSearchChanged(value) => {
