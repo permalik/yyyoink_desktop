@@ -547,8 +547,11 @@ impl Yoink {
                             shadow: iced::Shadow::default(),
                         }),
                 ]
+                .max_width(400)
                 .spacing(10),
             )
+            .align_x(iced::Alignment::Center)
+            .align_y(iced::Alignment::Center)
             .width(Length::FillPortion(6))
             .height(Length::Fill)
             .padding(5)
