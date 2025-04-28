@@ -39,6 +39,7 @@ struct Yoink {
     show_error: bool,
     panes: pane_grid::State<PaneState>,
     last_updated: Instant,
+    submit_enabled: bool,
 }
 
 impl Yoink {
@@ -61,6 +62,7 @@ impl Yoink {
                 show_error: false,
                 panes,
                 last_updated: Instant::now(),
+                submit_enabled: false,
             },
             Task::perform(file::load_captures(), Message::CapturesLoaded),
         )
@@ -134,6 +136,7 @@ impl Yoink {
             Message::EditorContentChanged(action) => {
                 self.editor.editor_content.perform(action);
                 self.editor.is_saved = false;
+
                 Task::none()
             }
             Message::CaptureSelected(index) => {
@@ -187,14 +190,17 @@ impl Yoink {
             }
             Message::CaptureTopicChanged(value) => {
                 self.capture.form_topic = value;
+                self.update_submit_enabled();
                 Task::none()
             }
             Message::CaptureSubjectChanged(value) => {
                 self.capture.form_subject = value;
+                self.update_submit_enabled();
                 Task::none()
             }
             Message::CaptureFormContentChanged(action) => {
                 self.capture.form_content.perform(action);
+                self.update_submit_enabled();
                 Task::none()
             }
             Message::SubmitCapture => {
@@ -538,6 +544,7 @@ impl Yoink {
     }
 
     fn view_capture_pane(&self) -> Element<Message> {
+        let submit_button = self.view_submit_button();
         let capture_pane = if self.capture_pane.is_visible {
             container(
                 col![
@@ -548,14 +555,7 @@ impl Yoink {
                         .on_input(Message::CaptureSubjectChanged),
                     text_editor(&self.capture.form_content)
                         .on_action(Message::CaptureFormContentChanged),
-                    button("Submit")
-                        .on_press(Message::SubmitCapture)
-                        .style(|_theme, _status| button::Style {
-                            background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
-                            text_color: iced::Color::from_rgb8(255, 224, 181),
-                            border: iced::Border::default(),
-                            shadow: iced::Shadow::default(),
-                        }),
+                    submit_button,
                 ]
                 .max_width(400)
                 .spacing(10),
@@ -616,6 +616,49 @@ impl Yoink {
         };
 
         col!(editor_pane).into()
+    }
+
+    fn view_submit_button(&self) -> Element<Message> {
+        let mut submit_button = button("Submit").style(|_theme, status| match status {
+            button::Status::Hovered => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(35, 29, 29))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+            button::Status::Active => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+            button::Status::Disabled => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(65, 59, 59))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+            _ => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+        });
+
+        if self.submit_enabled {
+            submit_button = submit_button.on_press(Message::SubmitCapture);
+        } else {
+            submit_button = submit_button;
+        }
+
+        submit_button.into()
+    }
+
+    fn update_submit_enabled(&mut self) {
+        self.submit_enabled = !self.capture.form_topic.is_empty()
+            && !self.capture.form_subject.is_empty()
+            && !self.capture.form_content.text().trim().is_empty()
     }
 }
 
