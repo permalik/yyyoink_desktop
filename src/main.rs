@@ -7,6 +7,8 @@ use capture::capture_pane::CapturePane;
 use capture::capture_sidebar::CaptureSidebar;
 use chrono::prelude::*;
 use editor::editor_models::Editor;
+use editor::editor_pane::EditorPane;
+use editor::editor_sidebar::EditorSidebar;
 use enums::message::Message;
 use enums::pane::PaneState;
 use iced::event::{self, Event};
@@ -35,6 +37,10 @@ struct Yoink {
     capture: Capture,
     capture_pane: CapturePane,
     capture_sidebar: CaptureSidebar,
+    files: Vec<String>,
+    editor_pane: EditorPane,
+    editor_sidebar: EditorSidebar,
+    opened_file: Vec<String>,
     ui_error: String,
     show_error: bool,
     panes: pane_grid::State<PaneState>,
@@ -58,6 +64,10 @@ impl Yoink {
                 capture: Capture::new(),
                 capture_pane: CapturePane::new(),
                 capture_sidebar: CaptureSidebar::new(),
+                files: Vec::new(),
+                editor_pane: EditorPane::new(),
+                editor_sidebar: EditorSidebar::new(),
+                opened_file: Vec::new(),
                 ui_error: String::new(),
                 show_error: false,
                 panes,
@@ -147,6 +157,14 @@ impl Yoink {
                     Task::none()
                 }
             }
+            Message::FileSelected(filename) => {
+                if let Some(file) = self.files.iter().find(|f| f == &&filename) {
+                    let file_input = file.clone();
+                    Task::perform(file::file_opened(file_input), Message::EditorFileOpened)
+                } else {
+                    Task::none()
+                }
+            }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
                 Task::none()
@@ -186,6 +204,10 @@ impl Yoink {
             }
             Message::CaptureSearchChanged(value) => {
                 self.capture.search = value;
+                Task::none()
+            }
+            Message::FileSearchChanged(value) => {
+                println!("Searching file:: {}", value);
                 Task::none()
             }
             Message::CaptureTopicChanged(value) => {
@@ -273,6 +295,32 @@ impl Yoink {
                     Task::perform(file::write_file(file, content), Message::FileWritten)
                 }
             }
+            Message::UpdateFile => {
+                if self.editor.editor_content.text().is_empty() {
+                    self.ui_error = "Submission failed: Inputs cannot be null.".to_string();
+                    Task::perform(file::log(), Message::ShowError)
+                } else {
+                    let before_content = &self.capture.before;
+                    let utc = Utc::now();
+                    let local_timestamp = utc.with_timezone(&Local).to_string();
+                    let timestamp = &local_timestamp[..19].to_string();
+                    let file = self.capture.current_capture_file.clone();
+                    let trimmed_file = &file[1..file.len() - 3];
+                    let subject = self.capture.current_capture_subject.clone();
+                    let editor_header = format!(
+                        "<!--yoink::::{}::::{}::::{}-->\n",
+                        timestamp, trimmed_file, subject
+                    );
+                    let editor_content = self.editor.editor_content.text();
+                    let after_content = &self.capture.after;
+                    let content = format!(
+                        "{}{}{}\n{}",
+                        before_content, editor_header, editor_content, after_content
+                    );
+
+                    Task::perform(file::write_file(file, content), Message::FileWritten)
+                }
+            }
             Message::FileOpened(result) => {
                 if let Ok(path) = result {
                     self.capture.updated_file = Some(path.to_string_lossy().to_string());
@@ -311,6 +359,13 @@ impl Yoink {
                 } else {
                     Task::none()
                 }
+            }
+            Message::EditorFileOpened(result) => {
+                if let Ok(lines) = result {
+                    self.opened_file = lines;
+                    //TODO: add filename and meta to editor header
+                }
+                Task::none()
             }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -411,18 +466,10 @@ impl Yoink {
             .iter()
             .enumerate()
             .map(|(i, capture)| {
-                let capture_button = button(
-                    col(capture
-                        .iter()
-                        .map(|field| text(field).into())
-                        .collect::<Vec<Element<Message>>>()),
-                    // .padding(Padding {
-                    //     top: 10.0,
-                    //     right: 25.0,
-                    //     bottom: 10.0,
-                    //     left: 5.0,
-                    // }),
-                )
+                let capture_button = button(col(capture
+                    .iter()
+                    .map(|field| text(field).into())
+                    .collect::<Vec<Element<Message>>>()))
                 .width(Length::Fill)
                 .on_press(Message::CaptureSelected(i))
                 .style(|_theme, status| match status {
@@ -588,25 +635,136 @@ impl Yoink {
     }
 
     fn view_editor_sidebar(&self) -> Element<Message> {
-        let editor_sidebar = if self.capture_sidebar.is_visible {
-            container(col![
-                text("editor_sidebar.."),
-                text("Some scrollable files.."),
-                row![button("s").on_press(Message::UpdateCapture)]
-            ])
+        let editor_list = self
+            .files
+            .iter()
+            .map(|file| {
+                let file_button = button(text(file.clone()))
+                    .width(Length::Fill)
+                    // TODO: to FileSelected
+                    .on_press(Message::FileSelected(file.to_string()))
+                    .style(|_theme, status| match status {
+                        button::Status::Hovered => button::Style {
+                            background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
+                            text_color: iced::Color::from_rgb8(255, 224, 181),
+                            border: iced::Border::default(),
+                            shadow: iced::Shadow::default(),
+                        },
+                        _ => button::Style {
+                            background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                            text_color: iced::Color::from_rgb8(255, 224, 181),
+                            border: iced::Border::default(),
+                            shadow: iced::Shadow::default(),
+                        },
+                    });
+
+                file_button.into()
+            })
+            .collect::<Vec<Element<Message>>>();
+
+        let editor_sidebar = if self.editor_sidebar.is_visible {
+            container(
+                col![
+                    row![
+                        // TODO: to FileSearchChanged
+                        text_input("Editor..", &self.capture.search)
+                            .on_input(Message::FileSearchChanged),
+                        button("X")
+                    ]
+                    .height(Length::FillPortion(2))
+                    .align_y(iced::Alignment::Center),
+                    scrollable(col(editor_list).spacing(5))
+                        .style(|_theme, _status| {
+                            scrollable::Style {
+                                container: container::Style {
+                                    text_color: None,
+                                    background: None,
+                                    border: Border {
+                                        color: Color::from_rgb8(0, 0, 0),
+                                        width: 0.0,
+                                        radius: Default::default(),
+                                    },
+                                    shadow: Default::default(),
+                                },
+                                vertical_rail: scrollable::Rail {
+                                    background: Some(iced::Background::Color(Color::from_rgb8(
+                                        180, 60, 60,
+                                    ))),
+                                    border: Border {
+                                        color: Color::from_rgb8(0, 0, 0),
+                                        width: 0.0,
+                                        radius: 5.0.into(),
+                                    },
+                                    scroller: scrollable::Scroller {
+                                        color: iced::Color::from_rgb8(120, 30, 30),
+                                        border: Border {
+                                            color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                            width: 0.0,
+                                            radius: 5.0.into(),
+                                        },
+                                    },
+                                },
+                                horizontal_rail: scrollable::Rail {
+                                    background: Some(iced::Background::Color(Color::from_rgb8(
+                                        180, 60, 60,
+                                    ))),
+                                    border: Border {
+                                        color: Color::from_rgb8(0, 0, 0),
+                                        width: 0.0,
+                                        radius: 5.0.into(),
+                                    },
+                                    scroller: scrollable::Scroller {
+                                        color: iced::Color::from_rgb8(15, 9, 9),
+                                        border: Border {
+                                            color: iced::Color::from_rgba8(0, 0, 0, 0.0),
+                                            width: 2.0,
+                                            radius: 5.0.into(),
+                                        },
+                                    },
+                                },
+                                gap: None,
+                            }
+                        })
+                        .height(Length::FillPortion(50)),
+                ]
+                .spacing(10),
+            )
+            // .width(Length::FillPortion(2))
+            //.max_width(100)
+            .height(Length::Fill)
+            .padding(5)
+            .style(|_theme| container::Style {
+                text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            })
         } else {
-            container(text("editor_sidebar hidden.."))
+            container(col![
+                text("Sidebar hidden."),
+                button("Switch").on_press(Message::Edit)
+            ])
+            // .width(Length::FillPortion(2))
+            //.max_width(100)
+            .height(Length::Fill)
+            .padding(5)
+            .style(|_theme| container::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            })
         };
 
         col!(editor_sidebar).width(200).max_width(200).into()
     }
 
     fn view_editor_pane(&self) -> Element<Message> {
-        let editor_pane = if self.capture_pane.is_visible {
+        let editor_pane = if self.editor_pane.is_visible {
             container(col![
                 row![text(self.capture.current_capture.clone()),].align_y(iced::Alignment::Center),
                 text_editor(&self.editor.editor_content)
-                    .on_action(Message::EditorContentChanged)
+                    .on_action(Message::UpdateFile)
                     .height(Length::Fill)
                     .padding(10)
             ])

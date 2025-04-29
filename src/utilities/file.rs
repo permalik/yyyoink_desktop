@@ -338,6 +338,16 @@ pub async fn capture_opened(capture: Vec<String>) -> Result<(String, PathBuf, St
     }
 }
 
+pub async fn file_opened(file: String) -> Result<Vec<String>, Error> {
+    println!("file_opened: {}", file);
+    let dummy: Vec<String> = vec![
+        "first".to_string(),
+        "second".to_string(),
+        "third".to_string(),
+    ];
+    Ok(dummy)
+}
+
 pub fn handle_hotkey(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
     match (key.as_ref(), modifiers) {
         (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "e" => Some(Message::Edit),
