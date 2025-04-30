@@ -74,7 +74,10 @@ impl Yoink {
                 last_updated: Instant::now(),
                 submit_enabled: false,
             },
-            Task::perform(file::load_captures(), Message::CapturesLoaded),
+            Task::batch([
+                Task::perform(file::load_captures(), Message::CapturesLoaded),
+                Task::perform(file::load_files(), Message::FilesLoaded),
+            ]),
         )
     }
 
@@ -183,6 +186,12 @@ impl Yoink {
             Message::CapturesLoaded(result) => {
                 if let Ok(value) = result {
                     self.captures = value;
+                }
+                Task::none()
+            }
+            Message::FilesLoaded(result) => {
+                if let Ok(value) = result {
+                    self.files = value;
                 }
                 Task::none()
             }

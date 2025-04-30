@@ -68,7 +68,7 @@ pub async fn load_captures() -> Result<Vec<Vec<String>>, Error> {
 
 async fn get_files() -> Result<Vec<String>, Error> {
     let source_dir = tool::source_dir();
-    let source_dir_ref: &str = source_dir.as_ref();
+    let source_dir_ref: &str = &source_dir;
     let mut entries = tokio::fs::read_dir(source_dir_ref)
         .await
         .map_err(|e| Error::IoError(e.kind()))?;
@@ -86,6 +86,33 @@ async fn get_files() -> Result<Vec<String>, Error> {
         if name_str.starts_with("_") && name_str.ends_with(".md") {
             file_names.push(name_str);
         }
+    }
+
+    if file_names.is_empty() {
+        return Err(Error::FileNotFound);
+    }
+
+    Ok(file_names)
+}
+
+pub async fn load_files() -> Result<Vec<String>, Error> {
+    let source_dir = tool::source_dir();
+    let source_dir_ref: &str = &source_dir;
+    let mut entries = tokio::fs::read_dir(source_dir_ref)
+        .await
+        .map_err(|e| Error::IoError(e.kind()))?;
+
+    let mut file_names: Vec<String> = Vec::new();
+
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| Error::IoError(e.kind()))?
+    {
+        let name: OsString = entry.file_name();
+        let name_str = name.to_string_lossy().to_string();
+
+        file_names.push(name_str);
     }
 
     if file_names.is_empty() {
