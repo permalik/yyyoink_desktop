@@ -371,7 +371,13 @@ impl Yoink {
             }
             Message::EditorFileOpened(result) => {
                 if let Ok(lines) = result {
-                    self.opened_file = lines;
+                    self.opened_file = lines.clone();
+                    let mut editor_content: String = String::new();
+                    for line in lines {
+                        editor_content.push_str(&line);
+                    }
+                    self.editor.editor_content = Content::with_text(&editor_content);
+                    println!("{}", self.editor.editor_content.text());
                     //TODO: add filename and meta to editor header
                 }
                 Task::none()
