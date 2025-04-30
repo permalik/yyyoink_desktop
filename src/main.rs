@@ -20,6 +20,7 @@ use iced::widget::{
 };
 use iced::{keyboard, Border};
 use iced::{Color, Element, Font, Length, Subscription, Task};
+use iced_aw::ContextMenu;
 use std::time::Instant;
 use utilities::file;
 
@@ -46,6 +47,7 @@ struct Yoink {
     panes: pane_grid::State<PaneState>,
     last_updated: Instant,
     submit_enabled: bool,
+    is_subselect_capture: bool,
 }
 
 impl Yoink {
@@ -73,6 +75,7 @@ impl Yoink {
                 panes,
                 last_updated: Instant::now(),
                 submit_enabled: false,
+                is_subselect_capture: false,
             },
             Task::batch([
                 Task::perform(file::load_captures(), Message::CapturesLoaded),
@@ -183,6 +186,10 @@ impl Yoink {
                 self.hide_error();
                 Task::none()
             }
+            Message::HideSubselectCapture => {
+                self.hide_subselect_capture();
+                Task::none()
+            }
             Message::CapturesLoaded(result) => {
                 if let Ok(value) = result {
                     self.captures = value;
@@ -232,6 +239,11 @@ impl Yoink {
             Message::CaptureFormContentChanged(action) => {
                 self.capture.form_content.perform(action);
                 self.update_submit_enabled();
+                Task::none()
+            }
+            Message::SubselectCapture => {
+                println!("SubselectCapture");
+                self.is_subselect_capture = true;
                 Task::none()
             }
             Message::SubmitCapture => {
@@ -377,7 +389,6 @@ impl Yoink {
                         editor_content.push_str(&line);
                     }
                     self.editor.editor_content = Content::with_text(&editor_content);
-                    println!("{}", self.editor.editor_content.text());
                     //TODO: add filename and meta to editor header
                 }
                 Task::none()
@@ -449,7 +460,7 @@ impl Yoink {
         .spacing(0)
         .on_resize(10, Message::PaneResized);
 
-        if self.show_error {
+        let base: Element<_> = if self.show_error {
             let error_overlay = container(text(self.ui_error.to_string()))
                 .width(Length::Fill)
                 .height(Length::Shrink)
@@ -463,10 +474,37 @@ impl Yoink {
                     shadow: iced::Shadow::default(),
                 });
 
-            modal(content, error_overlay, Message::HideError)
+            modal(content, error_overlay, Message::HideError).into()
+        } else if self.is_subselect_capture {
+            ContextMenu::new(content, || {
+                container(
+                    col![
+                        button("Choice 1")
+                            .width(400)
+                            .on_press(Message::HideSubselectCapture) // iced::widget::button("Choice 2")
+                                                                     //     .on_press(Message::Choice2)
+                                                                     //     .into(),
+                                                                     // iced::widget::button("Choice 3")
+                                                                     //     .on_press(Message::Choice3)
+                                                                     //     .into(),
+                                                                     // iced::widget::button("Choice 4")
+                                                                     //     .on_press(Message::Choice4)
+                                                                     //     .into(),
+                    ]
+                    .align_x(iced::Alignment::Center),
+                )
+                .width(Length::Shrink)
+                .height(Length::Shrink)
+                .align_x(iced::Alignment::Center)
+                .align_y(iced::Alignment::Center)
+                .into()
+            })
+            .into()
         } else {
             content.into()
-        }
+        };
+
+        base
     }
 }
 
@@ -475,32 +513,39 @@ impl Yoink {
         self.show_error = false;
     }
 
+    fn hide_subselect_capture(&mut self) {
+        self.is_subselect_capture = false;
+    }
+
     fn view_capture_sidebar(&self) -> Element<Message> {
         let capture_list = self
             .captures
             .iter()
             .enumerate()
             .map(|(i, capture)| {
-                let capture_button = button(col(capture
-                    .iter()
-                    .map(|field| text(field).into())
-                    .collect::<Vec<Element<Message>>>()))
-                .width(Length::Fill)
-                .on_press(Message::CaptureSelected(i))
-                .style(|_theme, status| match status {
-                    button::Status::Hovered => button::Style {
-                        background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
-                        text_color: iced::Color::from_rgb8(255, 224, 181),
-                        border: iced::Border::default(),
-                        shadow: iced::Shadow::default(),
-                    },
-                    _ => button::Style {
-                        background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
-                        text_color: iced::Color::from_rgb8(255, 224, 181),
-                        border: iced::Border::default(),
-                        shadow: iced::Shadow::default(),
-                    },
-                });
+                let capture_button = mouse_area(
+                    button(col(capture
+                        .iter()
+                        .map(|field| text(field).into())
+                        .collect::<Vec<Element<Message>>>()))
+                    .width(Length::Fill)
+                    .on_press(Message::CaptureSelected(i))
+                    .style(|_theme, status| match status {
+                        button::Status::Hovered => button::Style {
+                            background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
+                            text_color: iced::Color::from_rgb8(255, 224, 181),
+                            border: iced::Border::default(),
+                            shadow: iced::Shadow::default(),
+                        },
+                        _ => button::Style {
+                            background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                            text_color: iced::Color::from_rgb8(255, 224, 181),
+                            border: iced::Border::default(),
+                            shadow: iced::Shadow::default(),
+                        },
+                    }),
+                )
+                .on_right_press(Message::SubselectCapture);
 
                 capture_button.into()
             })
