@@ -478,19 +478,9 @@ impl Yoink {
         } else if self.is_subselect_capture {
             ContextMenu::new(content, || {
                 container(
-                    col![
-                        button("Choice 1")
-                            .width(400)
-                            .on_press(Message::HideSubselectCapture) // iced::widget::button("Choice 2")
-                                                                     //     .on_press(Message::Choice2)
-                                                                     //     .into(),
-                                                                     // iced::widget::button("Choice 3")
-                                                                     //     .on_press(Message::Choice3)
-                                                                     //     .into(),
-                                                                     // iced::widget::button("Choice 4")
-                                                                     //     .on_press(Message::Choice4)
-                                                                     //     .into(),
-                    ]
+                    col![button("Choice 1")
+                        .width(400)
+                        .on_press(Message::HideSubselectCapture)]
                     .align_x(iced::Alignment::Center),
                 )
                 .width(Length::Shrink)
