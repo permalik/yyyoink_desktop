@@ -764,9 +764,10 @@ impl Yoink {
             container(col![
                 row![text(self.capture.current_capture.clone()),].align_y(iced::Alignment::Center),
                 text_editor(&self.editor.editor_content)
-                    .on_action(Message::UpdateFile)
+                    .on_action(Message::EditorContentChanged)
                     .height(Length::Fill)
-                    .padding(10)
+                    .padding(10),
+                button("submit file").on_press(Message::UpdateFile)
             ])
             .padding(10)
         } else {
