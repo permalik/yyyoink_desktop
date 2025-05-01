@@ -5,6 +5,7 @@ use iced::keyboard;
 use std::ffi::OsString;
 use std::io::ErrorKind;
 use std::path::PathBuf;
+use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 pub async fn log() -> Result<String, Error> {
@@ -109,10 +110,19 @@ pub async fn load_files() -> Result<Vec<String>, Error> {
         .await
         .map_err(|e| Error::IoError(e.kind()))?
     {
-        let name: OsString = entry.file_name();
-        let name_str = name.to_string_lossy().to_string();
-
-        file_names.push(name_str);
+        let path = entry.path();
+        match fs::metadata(&path).await {
+            Ok(meta) => {
+                if !meta.is_dir() {
+                    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                        file_names.push(file_name.to_string());
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Unable to get file metadata: {}", e);
+            }
+        }
     }
 
     if file_names.is_empty() {
