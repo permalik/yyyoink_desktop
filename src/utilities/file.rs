@@ -346,6 +346,19 @@ pub async fn read_capture(
     }
 }
 
+pub async fn delete_capture(capture: Vec<String>) -> Result<bool, Error> {
+    match (capture.get(0), capture.get(1), capture.get(2)) {
+        (Some(timestamp), Some(path), Some(subject)) => {
+            let capture_path = format!("_{}.md", path);
+            println!("timestamp: {}", timestamp);
+            println!("capture_path: {}", capture_path);
+            println!("subject: {}", subject);
+            Ok(true)
+        }
+        _ => return Err(Error::IoError(ErrorKind::Other)),
+    }
+}
+
 async fn file_exists(current_path: &str) -> (bool, PathBuf) {
     let path = PathBuf::from(current_path);
     let check_path = path.clone();

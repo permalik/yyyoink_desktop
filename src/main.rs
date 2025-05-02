@@ -186,8 +186,24 @@ impl Yoink {
                 self.hide_error();
                 Task::none()
             }
-            Message::HideSubselectCapture => {
-                self.hide_subselect_capture();
+            Message::DeleteCapture(index) => {
+                if let Some(capture_data) = self.captures.get(index) {
+                    println!("Deleting line: {}", index);
+                    let capture_input = capture_data.clone();
+                    Task::perform(file::delete_capture(capture_input), Message::CaptureDeleted)
+                } else {
+                    Task::none()
+                }
+                // self.hide_subselect_capture();
+            }
+            Message::CaptureDeleted(result) => {
+                if let Ok(flag) = result {
+                    if flag {
+                        println!("capture has been deleted!");
+                    } else {
+                        println!("capture has NOT been deleted!");
+                    }
+                }
                 Task::none()
             }
             Message::CapturesLoaded(result) => {
@@ -477,17 +493,12 @@ impl Yoink {
             modal(content, error_overlay, Message::HideError).into()
         } else if self.is_subselect_capture {
             ContextMenu::new(content, || {
-                container(
-                    col![button("Choice 1")
-                        .width(400)
-                        .on_press(Message::HideSubselectCapture)]
-                    .align_x(iced::Alignment::Center),
-                )
-                .width(Length::Shrink)
-                .height(Length::Shrink)
-                .align_x(iced::Alignment::Center)
-                .align_y(iced::Alignment::Center)
-                .into()
+                container(col![button("Choice 1").width(400)].align_x(iced::Alignment::Center))
+                    .width(Length::Shrink)
+                    .height(Length::Shrink)
+                    .align_x(iced::Alignment::Center)
+                    .align_y(iced::Alignment::Center)
+                    .into()
             })
             .into()
         } else {
@@ -503,9 +514,9 @@ impl Yoink {
         self.show_error = false;
     }
 
-    fn hide_subselect_capture(&mut self) {
-        self.is_subselect_capture = false;
-    }
+    // fn hide_subselect_capture(&mut self) {
+    //     self.is_subselect_capture = false;
+    // }
 
     fn view_capture_sidebar(&self) -> Element<Message> {
         let capture_list = self
@@ -514,10 +525,13 @@ impl Yoink {
             .enumerate()
             .map(|(i, capture)| {
                 let capture_button = mouse_area(
-                    button(col(capture
-                        .iter()
-                        .map(|field| text(field).into())
-                        .collect::<Vec<Element<Message>>>()))
+                    button(row![
+                        col(capture
+                            .iter()
+                            .map(|field| text(field).into())
+                            .collect::<Vec<Element<Message>>>()),
+                        button("DEL").on_press(Message::DeleteCapture(i))
+                    ])
                     .width(Length::Fill)
                     .on_press(Message::CaptureSelected(i))
                     .style(|_theme, status| match status {
