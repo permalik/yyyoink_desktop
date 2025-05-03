@@ -197,14 +197,13 @@ impl Yoink {
                 // self.hide_subselect_capture();
             }
             Message::CaptureDeleted(result) => {
-                if let Ok(flag) = result {
-                    if flag {
-                        println!("capture has been deleted!");
-                    } else {
-                        println!("capture has NOT been deleted!");
-                    }
+                if let Ok(_) = result {
+                    println!("capture has been deleted!");
+                    Task::perform(file::load_captures(), Message::CapturesLoaded)
+                } else {
+                    println!("capture has NOT been deleted!");
+                    Task::none()
                 }
-                Task::none()
             }
             Message::CapturesLoaded(result) => {
                 if let Ok(value) = result {
@@ -363,7 +362,7 @@ impl Yoink {
                     self.capture.updated_file = Some(path.to_string_lossy().to_string());
                     println!("Opened/Written to {}", path.display());
                 }
-                Task::none()
+                Task::perform(file::load_captures(), Message::CapturesLoaded)
             }
             Message::CaptureOpened(result) => {
                 if let Ok((timestamp, path, subject)) = result {
