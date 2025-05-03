@@ -296,7 +296,6 @@ pub async fn read_capture(
             println!("Unable to convert bytes to string.");
         }
 
-        // <!--yoink::::2025-04-16 22:49:23::::test::::Thisthing-->
         let prefix = "<!--yoink";
         let delimiter = "::::";
         let topic = &file_name[1..file_name.len() - 3];
@@ -348,12 +347,101 @@ pub async fn read_capture(
 
 pub async fn delete_capture(capture: Vec<String>) -> Result<bool, Error> {
     match (capture.get(0), capture.get(1), capture.get(2)) {
-        (Some(timestamp), Some(path), Some(subject)) => {
-            let capture_path = format!("_{}.md", path);
-            println!("timestamp: {}", timestamp);
-            println!("capture_path: {}", capture_path);
-            println!("subject: {}", subject);
-            Ok(true)
+        (Some(timestamp), Some(file_path), Some(subject)) => {
+            let file_name = format!("_{}.md", file_path);
+            let capture_path = tool::source_path(file_name.to_string());
+            let capture_path_ref: &str = &capture_path;
+            let (is_file, path) = file_exists(capture_path_ref).await;
+
+            if is_file {
+                let mut file_content: Vec<String> = Vec::new();
+                let bytes = tokio::fs::read(&path)
+                    .await
+                    .map_err(|e| Error::IoError(e.kind()))?;
+                if let Ok(string) = String::from_utf8(bytes.clone()) {
+                    file_content = string.lines().map(|s| s.to_string()).collect();
+                } else {
+                    println!("Unable to convert bytes to string.");
+                }
+
+                let prefix = "<!--yoink";
+                let delimiter = "::::";
+                let suffix = "-->";
+                let capture_string = format!(
+                    "{}{}{}{}{}{}{}{}",
+                    prefix, delimiter, timestamp, delimiter, file_path, delimiter, subject, suffix
+                );
+                let mut before: Vec<(String, Vec<String>)> = Vec::new();
+                let mut content: (String, Vec<String>) = (String::new(), Vec::new());
+                let mut after: Vec<(String, Vec<String>)> = Vec::new();
+                let mut sections: Vec<(String, Vec<String>)> = Vec::new();
+                let mut current_section: Option<(String, Vec<String>)> = None;
+
+                for line in file_content.iter() {
+                    if line.starts_with("<!--yoink") && line.ends_with("-->") {
+                        if let Some((header, lines)) = current_section.take() {
+                            sections.push((header, lines));
+                        }
+
+                        current_section = Some((line.to_string(), Vec::new()));
+                    } else if let Some((_, ref mut lines)) = current_section {
+                        lines.push(line.to_string());
+                    }
+                }
+
+                if let Some((header, lines)) = current_section {
+                    sections.push((header, lines));
+                }
+
+                let mut found_content = false;
+                for (header, lines) in sections {
+                    if header == capture_string {
+                        content.0 = header;
+                        content.1.extend(lines);
+                        found_content = true;
+                    } else if !found_content {
+                        before.push((header, lines));
+                    } else {
+                        after.push((header, lines));
+                    }
+                }
+
+                let mut before_string = "".to_string();
+                let mut after_string = "".to_string();
+                let mut content_string = "".to_string();
+                for (header, lines) in before {
+                    before_string.push_str(&format!("{}\n", header.trim()));
+                    for line in lines {
+                        before_string.push_str(&format!("{}\n", line.trim()));
+                    }
+                }
+                for (header, lines) in after {
+                    after_string.push_str(&format!("{}\n", header.trim()));
+                    for line in lines {
+                        after_string.push_str(&format!("{}\n", line.trim()));
+                    }
+                }
+                content_string.push_str(&format!("{}\n", content.0.trim()));
+                for line in content.1 {
+                    content_string.push_str(&format!("{}\n", line.trim()));
+                }
+
+                let update_content = format!("{}{}", before_string, after_string);
+
+                match write_file(file_name, update_content).await {
+                    Ok(path_buf) => {
+                        println!("Updated: {}", path_buf.to_string_lossy());
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to update file: {}", e);
+                    }
+                }
+
+                Ok(true)
+            } else {
+                eprintln!("Failed to read file. File does not exist.");
+                Err(Error::FileNotFound)
+            }
         }
         _ => return Err(Error::IoError(ErrorKind::Other)),
     }
