@@ -357,6 +357,19 @@ impl Yoink {
                     Task::perform(file::write_file(file, content), Message::FileWritten)
                 }
             }
+            Message::DeleteFile(file_name) => {
+                println!("Deleting {}..", file_name);
+                Task::perform(file::delete_file(file_name), Message::FileDeleted)
+            }
+            Message::FileDeleted(result) => {
+                if let Ok(_) = result {
+                    println!("file has been deleted");
+                    Task::perform(file::load_files(), Message::FilesLoaded)
+                } else {
+                    println!("file has NOT been deleted");
+                    Task::none()
+                }
+            }
             Message::FileOpened(result) => {
                 if let Ok(path) = result {
                     self.capture.updated_file = Some(path.to_string_lossy().to_string());
@@ -702,24 +715,27 @@ impl Yoink {
             .files
             .iter()
             .map(|file| {
-                let file_button = button(text(file.clone()))
-                    .width(Length::Fill)
-                    // TODO: to FileSelected
-                    .on_press(Message::FileSelected(file.to_string()))
-                    .style(|_theme, status| match status {
-                        button::Status::Hovered => button::Style {
-                            background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
-                            text_color: iced::Color::from_rgb8(255, 224, 181),
-                            border: iced::Border::default(),
-                            shadow: iced::Shadow::default(),
-                        },
-                        _ => button::Style {
-                            background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
-                            text_color: iced::Color::from_rgb8(255, 224, 181),
-                            border: iced::Border::default(),
-                            shadow: iced::Shadow::default(),
-                        },
-                    });
+                let file_button = button(row![
+                    text(file.clone()),
+                    button("DEL").on_press(Message::DeleteFile(file.clone()))
+                ])
+                .width(Length::Fill)
+                // TODO: to FileSelected
+                .on_press(Message::FileSelected(file.to_string()))
+                .style(|_theme, status| match status {
+                    button::Status::Hovered => button::Style {
+                        background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
+                        text_color: iced::Color::from_rgb8(255, 224, 181),
+                        border: iced::Border::default(),
+                        shadow: iced::Shadow::default(),
+                    },
+                    _ => button::Style {
+                        background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                        text_color: iced::Color::from_rgb8(255, 224, 181),
+                        border: iced::Border::default(),
+                        shadow: iced::Shadow::default(),
+                    },
+                });
 
                 file_button.into()
             })

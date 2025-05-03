@@ -486,6 +486,17 @@ pub async fn file_opened(file: String) -> Result<Vec<String>, Error> {
     }
 }
 
+pub async fn delete_file(file: String) -> Result<bool, Error> {
+    let capture_path = tool::source_path(file);
+    match tokio::fs::remove_file(PathBuf::from(&capture_path)).await {
+        Ok(_) => Ok(true),
+        Err(e) => {
+            eprintln!("Failure: delete_file\n{}", e);
+            Err(Error::IoError(ErrorKind::Other))
+        }
+    }
+}
+
 pub fn handle_hotkey(key: keyboard::Key, modifiers: keyboard::Modifiers) -> Option<Message> {
     match (key.as_ref(), modifiers) {
         (keyboard::Key::Character(c), keyboard::Modifiers::ALT) if c == "e" => Some(Message::Edit),

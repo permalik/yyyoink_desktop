@@ -21,6 +21,8 @@ pub enum Message {
     UpdateCapture,
     SubselectCapture,
     UpdateFile,
+    DeleteFile(String),
+    FileDeleted(Result<bool, error::Error>),
     SubmitCapture,
     FileOpened(Result<PathBuf, error::Error>),
     ShowError(Result<String, error::Error>),
