@@ -20,7 +20,7 @@ use iced::widget::{
 };
 use iced::{keyboard, Border};
 use iced::{Color, Element, Font, Length, Subscription, Task};
-use iced_aw::ContextMenu;
+// use iced_aw::ContextMenu;
 use std::time::Instant;
 use utilities::file;
 
@@ -43,11 +43,12 @@ struct Yoink {
     editor_sidebar: EditorSidebar,
     opened_file: Vec<String>,
     ui_error: String,
-    show_error: bool,
+    show_helper: bool,
     panes: pane_grid::State<PaneState>,
     last_updated: Instant,
     submit_enabled: bool,
     is_subselect_capture: bool,
+    newfile_submit_enabled: bool,
 }
 
 impl Yoink {
@@ -71,11 +72,12 @@ impl Yoink {
                 editor_sidebar: EditorSidebar::new(),
                 opened_file: Vec::new(),
                 ui_error: String::new(),
-                show_error: false,
+                show_helper: false,
                 panes,
                 last_updated: Instant::now(),
                 submit_enabled: false,
                 is_subselect_capture: false,
+                newfile_submit_enabled: false,
             },
             Task::batch([
                 Task::perform(file::load_captures(), Message::CapturesLoaded),
@@ -178,12 +180,19 @@ impl Yoink {
             Message::ShowError(result) => {
                 if let Ok(value) = result {
                     println!("resulting {}", value);
-                    self.show_error = true;
                 }
-                widget::focus_next()
+                Task::none()
             }
-            Message::HideError => {
-                self.hide_error();
+            Message::ShowHelper(result) => {
+                if let Ok(value) = result {
+                    println!("resulting {}", value);
+                    self.show_helper = true;
+                }
+                Task::none()
+                // widget::focus_next()
+            }
+            Message::HideHelper => {
+                self.hide_helper();
                 Task::none()
             }
             Message::DeleteCapture(index) => {
@@ -231,6 +240,11 @@ impl Yoink {
                 self.panes = panes;
                 self.is_capture = true;
                 self.editor.is_saved = true;
+                Task::none()
+            }
+            Message::NewFileInput(value) => {
+                self.editor.new_file = value;
+                self.create_new_file_enabled();
                 Task::none()
             }
             Message::CaptureSearchChanged(value) => {
@@ -305,6 +319,22 @@ impl Yoink {
                     )
                 }
             }
+            Message::CreateNewFile => {
+                println!("Creating {}", self.editor.new_file);
+                Task::perform(
+                    file::create_file(self.editor.new_file.clone()),
+                    Message::CreatingNewFile,
+                )
+            }
+            Message::CreatingNewFile(result) => {
+                if let Ok(_) = result {
+                    self.hide_helper();
+                    Task::perform(file::load_files(), Message::FilesLoaded)
+                } else {
+                    println!("Failed CreatingNewFile");
+                    Task::none()
+                }
+            }
             Message::UpdateCapture => {
                 if self.editor.editor_content.text().is_empty() {
                     self.ui_error = "Submission failed: Inputs cannot be null.".to_string();
@@ -356,6 +386,10 @@ impl Yoink {
 
                     Task::perform(file::write_file(file, content), Message::FileWritten)
                 }
+            }
+            Message::CreateFile => {
+                println!("Creating file..");
+                Task::perform(file::log(), Message::ShowHelper)
             }
             Message::DeleteFile(file_name) => {
                 println!("Deleting {}..", file_name);
@@ -437,7 +471,7 @@ impl Yoink {
                     key: keyboard::Key::Named(key::Named::Escape),
                     ..
                 }) => {
-                    self.hide_error();
+                    self.hide_helper();
                     Task::none()
                 }
                 Event::Keyboard(keyboard::Event::KeyPressed {
@@ -488,31 +522,36 @@ impl Yoink {
         .spacing(0)
         .on_resize(10, Message::PaneResized);
 
-        let base: Element<_> = if self.show_error {
-            let error_overlay = container(text(self.ui_error.to_string()))
-                .width(Length::Fill)
-                .height(Length::Shrink)
-                .center_x(Length::Shrink)
-                .center_y(Length::Shrink)
-                .padding(10)
-                .style(|_theme| container::Style {
-                    text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
-                    background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
-                    border: iced::Border::default(),
-                    shadow: iced::Shadow::default(),
-                });
+        let base: Element<_> = if self.show_helper {
+            let submit_button = self.view_newfile_submit_button();
+            let helper = container(col![
+                text("Helper"),
+                text_input("File name..", &self.editor.new_file).on_input(Message::NewFileInput),
+                submit_button
+            ])
+            .width(Length::Fill)
+            .height(Length::Shrink)
+            .center_x(Length::Shrink)
+            .center_y(Length::Shrink)
+            .padding(10)
+            .style(|_theme| container::Style {
+                text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
+                background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            });
 
-            modal(content, error_overlay, Message::HideError).into()
-        } else if self.is_subselect_capture {
-            ContextMenu::new(content, || {
-                container(col![button("Choice 1").width(400)].align_x(iced::Alignment::Center))
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-                    .align_x(iced::Alignment::Center)
-                    .align_y(iced::Alignment::Center)
-                    .into()
-            })
-            .into()
+            modal(content, helper, Message::HideHelper).into()
+        // } else if self.is_subselect_capture {
+        //     ContextMenu::new(content, || {
+        //         container(col![button("Choice 1").width(400)].align_x(iced::Alignment::Center))
+        //             .width(Length::Shrink)
+        //             .height(Length::Shrink)
+        //             .align_x(iced::Alignment::Center)
+        //             .align_y(iced::Alignment::Center)
+        //             .into()
+        //     })
+        //     .into()
         } else {
             content.into()
         };
@@ -522,8 +561,8 @@ impl Yoink {
 }
 
 impl Yoink {
-    fn hide_error(&mut self) {
-        self.show_error = false;
+    fn hide_helper(&mut self) {
+        self.show_helper = false;
     }
 
     // fn hide_subselect_capture(&mut self) {
@@ -846,7 +885,10 @@ impl Yoink {
                     .on_action(Message::EditorContentChanged)
                     .height(Length::Fill)
                     .padding(10),
-                button("submit file").on_press(Message::UpdateFile)
+                row![
+                    button("submit file").on_press(Message::UpdateFile),
+                    button("create file").on_press(Message::CreateFile)
+                ]
             ])
             .padding(10)
         } else {
@@ -893,10 +935,51 @@ impl Yoink {
         submit_button.into()
     }
 
+    fn view_newfile_submit_button(&self) -> Element<Message> {
+        let mut submit_button = button("Submit").style(|_theme, status| match status {
+            button::Status::Hovered => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(35, 29, 29))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+            button::Status::Active => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+            button::Status::Disabled => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(65, 59, 59))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+            _ => button::Style {
+                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                text_color: iced::Color::from_rgb8(255, 224, 181),
+                border: iced::Border::default(),
+                shadow: iced::Shadow::default(),
+            },
+        });
+
+        if self.newfile_submit_enabled {
+            submit_button = submit_button.on_press(Message::CreateNewFile);
+        } else {
+            submit_button = submit_button;
+        }
+
+        submit_button.into()
+    }
+
     fn update_submit_enabled(&mut self) {
         self.submit_enabled = !self.capture.form_topic.is_empty()
             && !self.capture.form_subject.is_empty()
             && !self.capture.form_content.text().trim().is_empty()
+    }
+
+    fn create_new_file_enabled(&mut self) {
+        self.newfile_submit_enabled = !self.editor.new_file.is_empty()
     }
 }
 

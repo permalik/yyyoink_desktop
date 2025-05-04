@@ -486,6 +486,19 @@ pub async fn file_opened(file: String) -> Result<Vec<String>, Error> {
     }
 }
 
+pub async fn create_file(file: String) -> Result<bool, Error> {
+    let capture_file = format!("_{}.md", file);
+    let capture_path = tool::source_path(capture_file);
+    // TODO: update to avoid truncating existing files
+    match tokio::fs::File::create(&capture_path).await {
+        Ok(_) => Ok(true),
+        Err(e) => {
+            eprintln!("Failure: create_file\n{}", e);
+            Err(Error::IoError(ErrorKind::Other))
+        }
+    }
+}
+
 pub async fn delete_file(file: String) -> Result<bool, Error> {
     let capture_path = tool::source_path(file);
     match tokio::fs::remove_file(PathBuf::from(&capture_path)).await {
