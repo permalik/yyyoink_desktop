@@ -1,9 +1,11 @@
 use std::time::Instant;
 
+use iced::advanced::widget::operation::focusable::focus;
 use iced::widget::{
     button, center, column as col, container, mouse_area, opaque, pane_grid, row, scrollable,
     stack, text, text_editor, text_input,
 };
+use iced::Length::Shrink;
 use iced::{Border, Color, Element, Length};
 
 use crate::capture::capture_models::Capture;
@@ -33,11 +35,15 @@ pub struct Yoink {
     pub submit_enabled: bool,
     pub is_subselect_capture: bool,
     pub newfile_submit_enabled: bool,
+    pub modal_helper: bool,
 }
 
 impl Yoink {
     pub fn hide_helper(&mut self) {
         self.show_helper = false;
+    }
+    pub fn hide_modal_helper(&mut self) {
+        self.modal_helper = false;
     }
 
     // fn hide_subselect_capture(&mut self) {
@@ -58,7 +64,7 @@ impl Yoink {
                             .collect::<Vec<Element<Message>>>()),
                         button("DEL").on_press(Message::DeleteCapture(i))
                     ])
-                    .width(Length::Fill)
+                    .width(750)
                     .on_press(Message::CaptureSelected(i))
                     .style(|_theme, status| match status {
                         button::Status::Hovered => button::Style {
@@ -89,7 +95,7 @@ impl Yoink {
                             .on_input(Message::CaptureSearchChanged),
                         button("X")
                     ]
-                    .height(Length::FillPortion(2))
+                    .height(50)
                     .align_y(iced::Alignment::Center),
                     scrollable(col(capture_list).spacing(5))
                         .style(|_theme, _status| {
@@ -143,20 +149,21 @@ impl Yoink {
                                 gap: None,
                             }
                         })
-                        .height(Length::FillPortion(50)),
+                        .height(400),
                     row![button("Switch").on_press(Message::Edit)]
-                        .height(Length::FillPortion(2))
+                        .width(Shrink)
+                        .height(50)
                         .align_y(iced::Alignment::Center)
                 ]
+                .height(500)
                 .spacing(10),
             )
-            // .width(Length::FillPortion(2))
-            //.max_width(100)
-            .height(Length::Fill)
+            .width(750)
+            .height(520)
             .padding(5)
             .style(|_theme| container::Style {
                 text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
-                background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
                 border: iced::Border::default(),
                 shadow: iced::Shadow::default(),
             })
@@ -165,10 +172,6 @@ impl Yoink {
                 text("Sidebar hidden."),
                 button("Switch").on_press(Message::Edit)
             ])
-            // .width(Length::FillPortion(2))
-            //.max_width(100)
-            .height(Length::Fill)
-            .padding(5)
             .style(|_theme| container::Style {
                 background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
                 text_color: Some(iced::Color::from_rgb8(255, 224, 181)),
@@ -177,7 +180,7 @@ impl Yoink {
             })
         };
 
-        col!(capture_sidebar).width(200).max_width(200).into()
+        col!(capture_sidebar).width(750).max_width(750).into()
     }
 
     pub fn view_capture_pane(&self) -> Element<Message> {
@@ -362,7 +365,8 @@ impl Yoink {
                     .padding(10),
                 row![
                     button("submit file").on_press(Message::UpdateFile),
-                    button("create file").on_press(Message::CreateFile)
+                    button("create file").on_press(Message::CreateFile),
+                    button("create file").on_press(Message::ViewModalHelper)
                 ]
             ])
             .padding(10)

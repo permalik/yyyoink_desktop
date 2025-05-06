@@ -16,7 +16,7 @@ use iced::event::{self, Event};
 use iced::keyboard;
 use iced::keyboard::key;
 use iced::widget::text_editor::Content;
-use iced::widget::{self, column as col, container, pane_grid, text, text_input};
+use iced::widget::{self, button, column as col, container, pane_grid, text, text_input};
 use iced::{Color, Element, Font, Length, Subscription, Task};
 // use iced_aw::ContextMenu;
 use std::time::Instant;
@@ -57,6 +57,7 @@ impl Yoink {
                 submit_enabled: false,
                 is_subselect_capture: false,
                 newfile_submit_enabled: false,
+                modal_helper: false,
             },
             Task::batch([
                 Task::perform(file::load_captures(), Message::CapturesLoaded),
@@ -162,6 +163,14 @@ impl Yoink {
                 }
                 Task::none()
             }
+            Message::ShowModalHelper(result) => {
+                if let Ok(value) = result {
+                    println!("resulting {}", value);
+                    self.modal_helper = true;
+                }
+                Task::none()
+                // widget::focus_next()
+            }
             Message::ShowHelper(result) => {
                 if let Ok(value) = result {
                     println!("resulting {}", value);
@@ -169,6 +178,10 @@ impl Yoink {
                 }
                 Task::none()
                 // widget::focus_next()
+            }
+            Message::HideModalHelper => {
+                self.hide_modal_helper();
+                Task::none()
             }
             Message::HideHelper => {
                 self.hide_helper();
@@ -370,6 +383,10 @@ impl Yoink {
                 println!("Creating file..");
                 Task::perform(file::log(), Message::ShowHelper)
             }
+            Message::ViewModalHelper => {
+                println!("Creating file..");
+                Task::perform(file::log(), Message::ShowModalHelper)
+            }
             Message::DeleteFile(file_name) => {
                 println!("Deleting {}..", file_name);
                 Task::perform(file::delete_file(file_name), Message::FileDeleted)
@@ -475,52 +492,62 @@ impl Yoink {
     }
 
     fn view(&self) -> Element<Message> {
-        let content = pane_grid::PaneGrid::new(&self.panes, |_pane, state, _is_maximized| {
-            if self.is_capture {
-                let content: Element<_> = match state {
-                    PaneState::CaptureSidebarPane => self.view_capture_sidebar(),
-                    PaneState::CaptureFormPane => self.view_capture_pane(),
-                    PaneState::EditorSidebarPane => self.view_editor_sidebar(),
-                    PaneState::EditorPane => self.view_editor_pane(),
-                };
+        let content = self.view_editor_pane();
+        if self.modal_helper {
+            let capture = self.view_capture_sidebar();
+            let helper = container(capture);
+            Yoink::modal(content, helper, Message::ViewModalHelper).into()
+        } else {
+            content.into()
+        }
+        // TODO: REVERT
+        // let content = pane_grid::PaneGrid::new(&self.panes, |_pane, state, _is_maximized| {
+        //     if self.is_capture {
+        //         let content: Element<_> = match state {
+        //             PaneState::CaptureSidebarPane => self.view_capture_sidebar(),
+        //             PaneState::CaptureFormPane => self.view_capture_pane(),
+        //             PaneState::EditorSidebarPane => self.view_editor_sidebar(),
+        //             PaneState::EditorPane => self.view_editor_pane(),
+        //         };
+        //
+        //         pane_grid::Content::new(content)
+        //     } else {
+        //         let content: Element<_> = match state {
+        //             PaneState::CaptureSidebarPane => self.view_capture_sidebar(),
+        //             PaneState::CaptureFormPane => self.view_capture_pane(),
+        //             PaneState::EditorSidebarPane => self.view_editor_sidebar(),
+        //             PaneState::EditorPane => self.view_editor_pane(),
+        //         };
+        //
+        //         pane_grid::Content::new(content)
+        //     }
+        // })
+        // .width(Length::Fill)
+        // .height(Length::Fill)
+        // .spacing(0)
+        // .on_resize(10, Message::PaneResized);
 
-                pane_grid::Content::new(content)
-            } else {
-                let content: Element<_> = match state {
-                    PaneState::CaptureSidebarPane => self.view_capture_sidebar(),
-                    PaneState::CaptureFormPane => self.view_capture_pane(),
-                    PaneState::EditorSidebarPane => self.view_editor_sidebar(),
-                    PaneState::EditorPane => self.view_editor_pane(),
-                };
-
-                pane_grid::Content::new(content)
-            }
-        })
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .spacing(0)
-        .on_resize(10, Message::PaneResized);
-
-        let base: Element<_> = if self.show_helper {
-            let submit_button = self.view_newfile_submit_button();
-            let helper = container(col![
-                text("Helper"),
-                text_input("File name..", &self.editor.new_file).on_input(Message::NewFileInput),
-                submit_button
-            ])
-            .width(Length::Fill)
-            .height(Length::Shrink)
-            .center_x(Length::Shrink)
-            .center_y(Length::Shrink)
-            .padding(10)
-            .style(|_theme| container::Style {
-                text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
-                background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
-                border: iced::Border::default(),
-                shadow: iced::Shadow::default(),
-            });
-
-            Yoink::modal(content, helper, Message::HideHelper).into()
+        // TODO: REVERT
+        // let base: Element<_> = if self.show_helper {
+        //     let submit_button = self.view_newfile_submit_button();
+        //     let helper = container(col![
+        //         text("Helper"),
+        //         text_input("File name..", &self.editor.new_file).on_input(Message::NewFileInput),
+        //         submit_button
+        //     ])
+        //     .width(Length::Fill)
+        //     .height(Length::Shrink)
+        //     .center_x(Length::Shrink)
+        //     .center_y(Length::Shrink)
+        //     .padding(10)
+        //     .style(|_theme| container::Style {
+        //         text_color: Some(iced::Color::from_rgb8(15, 9, 9)),
+        //         background: Some(iced::Background::Color(Color::from_rgb8(255, 182, 182))),
+        //         border: iced::Border::default(),
+        //         shadow: iced::Shadow::default(),
+        //     });
+        //
+        //     Yoink::modal(content, helper, Message::HideHelper).into()
         // } else if self.is_subselect_capture {
         //     ContextMenu::new(content, || {
         //         container(col![button("Choice 1").width(400)].align_x(iced::Alignment::Center))
@@ -531,10 +558,12 @@ impl Yoink {
         //             .into()
         //     })
         //     .into()
-        } else {
-            content.into()
-        };
+        // TODO: REVERT
+        // } else {
+        //     content.into()
+        // };
 
-        base
+        // TODO: REVERT
+        // base
     }
 }
