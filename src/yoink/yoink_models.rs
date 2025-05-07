@@ -1,12 +1,15 @@
 use std::time::Instant;
 
 use iced::advanced::widget::operation::focusable::focus;
+use iced::advanced::widget::{self, Widget};
+use iced::border::{self, Radius};
+use iced::theme::palette;
 use iced::widget::{
     button, center, column as col, container, mouse_area, opaque, pane_grid, row, scrollable,
     stack, text, text_editor, text_input,
 };
 use iced::Length::Shrink;
-use iced::{Border, Color, Element, Length};
+use iced::{Background, Border, Color, Element, Length, Shadow, Theme};
 
 use crate::capture::capture_models::Capture;
 use crate::capture::capture_pane::CapturePane;
@@ -366,7 +369,7 @@ impl Yoink {
                 row![
                     button("submit file").on_press(Message::UpdateFile),
                     button("create file").on_press(Message::CreateFile),
-                    button("create file").on_press(Message::ViewModalHelper)
+                    button("create file").on_press(Message::ViewModalHelper),
                 ]
             ])
             .padding(10)
@@ -490,3 +493,189 @@ impl Yoink {
         .into()
     }
 }
+
+// pub struct CustomButton<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer>
+// where
+//     Renderer: iced::advanced::Renderer,
+//     Theme: Catalog,
+// {
+//     content: Element<'a, Message, Renderer>,
+//     is_focused: bool,
+//     class: Theme::Class<'a>,
+// }
+//
+// impl<'a, Message, Theme, Renderer> CustomButton<'a, Message, Theme, Renderer>
+// where
+//     Renderer: iced::advanced::Renderer,
+//     Theme: Catalog,
+// {
+//     pub fn new(content: impl Into<Element<'a, Message, Renderer>>) -> Self {
+//         let content = content.into();
+//         let size = content.as_widget().size_hint();
+//
+//         CustomButton {
+//             content,
+//             is_focused: false,
+//             class: Theme::default(),
+//         }
+//     }
+//
+//     pub fn focus(&mut self) {
+//         self.is_focused = true;
+//     }
+//
+//     pub fn unfocus(&mut self) {
+//         self.is_focused = false;
+//     }
+//
+//     pub fn is_focused(&self) -> bool {
+//         self.is_focused
+//     }
+//
+//     pub fn on_enter(&self) {
+//         if self.is_focused {
+//             println!("Button Pressed");
+//         }
+//     }
+// }
+//
+// #[derive(Debug, Clone, Copy, PartialEq)]
+// pub struct Style {
+//     /// The [`Background`] of the button.
+//     pub background: Option<Background>,
+//     /// The border radius of the button.
+//     pub border_radius: Radius,
+//     /// The border width of the button.
+//     pub border_width: f32,
+//     /// The border [`Color`] of the button.
+//     pub border_color: Color,
+//     /// The icon [`Color`] of the button.
+//     pub icon_color: Option<Color>,
+//     /// The text [`Color`] of the button.
+//     pub text_color: Color,
+//     /// The [`Border`] of the button.
+//     pub border: Border,
+//     /// The [`Shadow`] of the button.
+//     pub shadow: Shadow,
+// }
+//
+// impl Style {
+//     /// Updates the [`Style`] with the given [`Background`].
+//     pub fn with_background(self, background: impl Into<Background>) -> Self {
+//         Self {
+//             background: Some(background.into()),
+//             ..self
+//         }
+//     }
+// }
+//
+// impl Default for Style {
+//     fn default() -> Self {
+//         Self {
+//             background: None,
+//             border_radius: 0.0.into(),
+//             border_width: 0.0,
+//             border_color: Color::TRANSPARENT,
+//             icon_color: None,
+//             text_color: Color::BLACK,
+//             border: Border::default(),
+//             shadow: Shadow::default(),
+//         }
+//     }
+// }
+//
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// struct ButtonState {
+//     is_hovered: bool,
+//     is_pressed: bool,
+//     is_focused: bool,
+// }
+
+// impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+//     for CustomButton<'a, Message, Theme, Renderer>
+// where
+//     Message: 'a + Clone,
+//     Renderer: 'a + iced::advanced::Renderer,
+//     Theme: Catalog,
+// {
+// }
+//
+// impl<'a, Message, Theme, Renderer> From<CustomButton<'a, Message, Theme, Renderer>>
+//     for Element<'a, Message, Theme, Renderer>
+// where
+//     Message: Clone + 'a,
+//     Theme: Catalog + 'a,
+//     Renderer: iced::advanced::Renderer + 'a,
+// {
+// }
+
+// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// pub enum Status {
+//     /// The [`Button`] can be pressed.
+//     Active,
+//     /// The [`Button`] can be pressed and it is being hovered.
+//     Hovered,
+//     /// The [`Button`] is being pressed.
+//     Pressed,
+//     /// The [`Button`] cannot be pressed.
+//     Disabled,
+// }
+//
+// pub trait Catalog {
+//     /// The item class of the [`Catalog`].
+//     type Class<'a>;
+//
+//     /// The default class produced by the [`Catalog`].
+//     fn default<'a>() -> Self::Class<'a>;
+//
+//     /// The [`Style`] of a class with the given status.
+//     fn style(&self, class: &Self::Class<'_>, status: Status) -> Style;
+// }
+//
+// /// A styling function for a [`Button`].
+// pub type StyleFn<'a, Theme> = Box<dyn Fn(&Theme, Status) -> Style + 'a>;
+//
+// impl Catalog for Theme {
+//     type Class<'a> = StyleFn<'a, Self>;
+//
+//     fn default<'a>() -> Self::Class<'a> {
+//         Box::new(primary)
+//     }
+//
+//     fn style(&self, class: &Self::Class<'_>, status: Status) -> Style {
+//         class(self, status)
+//     }
+// }
+//
+// pub fn primary(theme: &::iced::Theme, status: Status) -> Style {
+//     let palette = theme.extended_palette();
+//     let base = styled(palette.primary.strong);
+//
+//     match status {
+//         Status::Active | Status::Pressed => base,
+//         Status::Hovered => Style {
+//             background: Some(Background::Color(palette.primary.base.color)),
+//             ..base
+//         },
+//         Status::Disabled => disabled(base),
+//     }
+// }
+//
+// fn styled(pair: palette::Pair) -> Style {
+//     Style {
+//         background: Some(Background::Color(pair.color)),
+//         text_color: pair.text,
+//         border: border::rounded(2),
+//         ..Style::default()
+//     }
+// }
+//
+// fn disabled(style: Style) -> Style {
+//     Style {
+//         background: style
+//             .background
+//             .map(|background| background.scale_alpha(0.5)),
+//         text_color: style.text_color.scale_alpha(0.5),
+//         ..style
+//     }
+// }
