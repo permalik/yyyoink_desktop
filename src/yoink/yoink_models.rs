@@ -40,7 +40,6 @@ pub struct Yoink {
     pub is_subselect_capture: bool,
     pub newfile_submit_enabled: bool,
     pub modal_helper: bool,
-    pub radius: f32,
 }
 
 impl Yoink {
