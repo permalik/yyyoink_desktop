@@ -10,6 +10,7 @@ pub enum Message {
     CapturesReloaded(Result<Vec<Vec<String>>, error::Error>),
     Ignore,
     NewFileInput(String),
+    RadiusChanged(f32),
     CaptureSearchChanged(String),
     FileSearchChanged(String),
     CaptureTopicChanged(String),

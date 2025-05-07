@@ -58,6 +58,7 @@ impl Yoink {
                 is_subselect_capture: false,
                 newfile_submit_enabled: false,
                 modal_helper: false,
+                radius: 50.0,
             },
             Task::batch([
                 Task::perform(file::load_captures(), Message::CapturesLoaded),
@@ -452,6 +453,10 @@ impl Yoink {
                 Task::none()
             }
             Message::Ignore => Task::none(),
+            Message::RadiusChanged(radius) => {
+                self.radius = radius;
+                Task::none()
+            }
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Tab),

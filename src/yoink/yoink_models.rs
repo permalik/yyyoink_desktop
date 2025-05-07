@@ -1,15 +1,13 @@
 use std::time::Instant;
 
-use iced::advanced::widget::operation::focusable::focus;
-use iced::advanced::widget::{self, Widget};
 use iced::border::{self, Radius};
 use iced::theme::palette;
 use iced::widget::{
     button, center, column as col, container, mouse_area, opaque, pane_grid, row, scrollable,
-    stack, text, text_editor, text_input,
+    slider, stack, text, text_editor, text_input,
 };
 use iced::Length::Shrink;
-use iced::{Background, Border, Color, Element, Length, Shadow, Theme};
+use iced::{mouse, Background, Border, Color, Element, Length, Rectangle, Shadow, Size, Theme};
 
 use crate::capture::capture_models::Capture;
 use crate::capture::capture_pane::CapturePane;
@@ -19,6 +17,9 @@ use crate::editor::editor_pane::EditorPane;
 use crate::editor::editor_sidebar::EditorSidebar;
 use crate::enums::message::Message;
 use crate::enums::pane::PaneState;
+use iced::advanced::layout::{self, Layout};
+use iced::advanced::renderer;
+use iced::advanced::widget::{self, Widget};
 
 pub struct Yoink {
     pub is_capture: bool,
@@ -39,6 +40,7 @@ pub struct Yoink {
     pub is_subselect_capture: bool,
     pub newfile_submit_enabled: bool,
     pub modal_helper: bool,
+    pub radius: f32,
 }
 
 impl Yoink {
@@ -380,6 +382,10 @@ impl Yoink {
     }
 
     pub fn view_editor_pane(&self) -> Element<Message> {
+        let mybutton = CustomButton {
+            width: 100.0,
+            height: 40.0,
+        };
         let editor_pane = if self.editor_pane.is_visible {
             container(col![
                 row![text(self.capture.current_capture.clone()),].align_y(iced::Alignment::Center),
@@ -391,6 +397,7 @@ impl Yoink {
                     button("submit file").on_press(Message::UpdateFile),
                     button("create file").on_press(Message::CreateFile),
                     button("create file").on_press(Message::ViewModalHelper),
+                    mybutton,
                 ]
             ])
             .padding(10)
@@ -512,6 +519,71 @@ impl Yoink {
             )
         ]
         .into()
+    }
+}
+
+pub struct CustomButton {
+    pub width: f32,
+    pub height: f32,
+}
+
+// impl Circle {
+//     pub fn new(radius: f32) -> Self {
+//         Self { radius }
+//     }
+// }
+//
+// pub fn circle(radius: f32) -> Circle {
+//     Circle::new(radius)
+// }
+
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for CustomButton
+where
+    Renderer: renderer::Renderer,
+{
+    fn size(&self) -> Size<Length> {
+        Size {
+            width: Length::Fixed(self.width),
+            height: Length::Fixed(self.height),
+        }
+    }
+
+    fn layout(
+        &self,
+        _tree: &mut widget::Tree,
+        _renderer: &Renderer,
+        _limits: &layout::Limits,
+    ) -> layout::Node {
+        layout::Node::new(Size::new(self.width, self.height))
+    }
+
+    fn draw(
+        &self,
+        _state: &widget::Tree,
+        renderer: &mut Renderer,
+        _theme: &Theme,
+        _style: &renderer::Style,
+        layout: Layout<'_>,
+        _cursor: mouse::Cursor,
+        _viewport: &Rectangle,
+    ) {
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds: layout.bounds(),
+                border: Border::default(),
+                ..Default::default()
+            },
+            Color::from_rgb8(255, 244, 150),
+        )
+    }
+}
+
+impl<'a, Message, Theme, Renderer> From<CustomButton> for Element<'a, Message, Theme, Renderer>
+where
+    Renderer: renderer::Renderer,
+{
+    fn from(button: CustomButton) -> Self {
+        Self::new(button)
     }
 }
 
