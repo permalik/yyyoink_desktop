@@ -59,34 +59,55 @@ impl Yoink {
             .iter()
             .enumerate()
             .map(|(i, capture)| {
-                let capture_button = mouse_area(
-                    button(row![
-                        col(capture
-                            .iter()
-                            .map(|field| text(field).into())
-                            .collect::<Vec<Element<Message>>>()),
-                        button("DEL").on_press(Message::DeleteCapture(i))
-                    ])
-                    .width(750)
-                    .on_press(Message::CaptureSelected(i))
-                    .style(|_theme, status| match status {
-                        button::Status::Hovered => button::Style {
-                            background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
-                            text_color: iced::Color::from_rgb8(255, 224, 181),
-                            border: iced::Border::default(),
-                            shadow: iced::Shadow::default(),
-                        },
-                        _ => button::Style {
-                            background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
-                            text_color: iced::Color::from_rgb8(255, 224, 181),
-                            border: iced::Border::default(),
-                            shadow: iced::Shadow::default(),
-                        },
-                    }),
-                )
-                .on_right_press(Message::SubselectCapture);
+                let text_fields = capture
+                    .iter()
+                    .map(|field| {
+                        text_input("", field)
+                            .on_input(|_| Message::Ignore)
+                            .padding(5)
+                            .style(|_theme, _status| text_input::Style {
+                                background: Background::Color(Color::BLACK),
+                                border: Border::default(),
+                                icon: iced::Color::from_rgb8(255, 244, 181),
+                                placeholder: iced::Color::from_rgb8(255, 244, 181),
+                                value: iced::Color::from_rgb8(255, 244, 181),
+                                selection: iced::Color::from_rgb8(255, 244, 181),
+                            })
+                            .into()
+                        // let capture_button = mouse_area(
+                        //     button(row![
+                        //         col(capture
+                        //             .iter()
+                        //             .map(|field| text(field).into())
+                        //             .collect::<Vec<Element<Message>>>()),
+                        //         button("DEL").on_press(Message::DeleteCapture(i))
+                        //     ])
+                        //     .width(750)
+                        //     .on_press(Message::CaptureSelected(i))
+                        //     .style(|_theme, status| match status {
+                        //         button::Status::Hovered => button::Style {
+                        //             background: Some(iced::Background::Color(Color::from_rgb8(25, 19, 19))),
+                        //             text_color: iced::Color::from_rgb8(255, 224, 181),
+                        //             border: iced::Border::default(),
+                        //             shadow: iced::Shadow::default(),
+                        //         },
+                        //         _ => button::Style {
+                        //             background: Some(iced::Background::Color(Color::from_rgb8(15, 9, 9))),
+                        //             text_color: iced::Color::from_rgb8(255, 224, 181),
+                        //             border: iced::Border::default(),
+                        //             shadow: iced::Shadow::default(),
+                        //         },
+                        //     }),
+                        // )
+                        // .on_right_press(Message::SubselectCapture);
+                        //
+                        // capture_button.into()
+                    })
+                    .collect::<Vec<Element<Message>>>();
 
-                capture_button.into()
+                let capture_item = mouse_area(row![col(text_fields)].width(750));
+
+                capture_item.into()
             })
             .collect::<Vec<Element<Message>>>();
 

@@ -451,6 +451,7 @@ impl Yoink {
                 }
                 Task::none()
             }
+            Message::Ignore => Task::none(),
             Message::Event(event) => match event {
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: keyboard::Key::Named(key::Named::Tab),

@@ -8,6 +8,7 @@ pub enum Message {
     CapturesLoaded(Result<Vec<Vec<String>>, error::Error>),
     FilesLoaded(Result<Vec<String>, error::Error>),
     CapturesReloaded(Result<Vec<Vec<String>>, error::Error>),
+    Ignore,
     NewFileInput(String),
     CaptureSearchChanged(String),
     FileSearchChanged(String),
