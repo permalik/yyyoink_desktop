@@ -8,7 +8,9 @@ use iced::widget::{
     slider, stack, text, text_editor, text_input,
 };
 use iced::Length::Shrink;
-use iced::{mouse, Background, Border, Color, Element, Length, Rectangle, Shadow, Size, Theme};
+use iced::{
+    mouse, Background, Border, Color, Element, Length, Pixels, Rectangle, Shadow, Size, Theme,
+};
 
 use crate::capture::capture_models::Capture;
 use crate::capture::capture_pane::CapturePane;
@@ -384,9 +386,10 @@ impl Yoink {
     pub fn view_editor_pane(&self) -> Element<Message> {
         let input = text_input("Placeholder", "").padding(10).into();
         let mybutton = CustomButton {
-            width: 100.0,
-            height: 40.0,
+            width: CustomButtonLength::Shrink,
+            height: CustomButtonLength::Shrink,
             content: input,
+            style: ButtonStyle::default(),
         };
         let editor_pane = if self.editor_pane.is_visible {
             container(col![
@@ -528,20 +531,11 @@ pub struct CustomButton<Message, Theme, Renderer>
 where
     Renderer: renderer::Renderer,
 {
-    pub width: f32,
-    pub height: f32,
+    pub width: CustomButtonLength,
+    pub height: CustomButtonLength,
     pub content: Element<'static, Message, Theme, Renderer>,
+    pub style: ButtonStyle,
 }
-
-// impl Circle {
-//     pub fn new(radius: f32) -> Self {
-//         Self { radius }
-//     }
-// }
-//
-// pub fn circle(radius: f32) -> Circle {
-//     Circle::new(radius)
-// }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
     for CustomButton<Message, Theme, Renderer>
@@ -552,8 +546,8 @@ where
 {
     fn size(&self) -> Size<Length> {
         Size {
-            width: Length::Fixed(self.width),
-            height: Length::Fixed(self.height),
+            width: self.width.into(),
+            height: self.height.into(),
         }
     }
 
@@ -571,15 +565,13 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        let child_limits = limits
-            .width(Length::Fixed(self.width))
-            .height(Length::Fixed(self.height));
+        let child_limits = limits.width(self.width).height(self.height);
 
         let child = self
             .content
             .as_widget()
             .layout(&mut tree.children[0], renderer, &child_limits);
-        let mut node = layout::Node::with_children(Size::new(self.width, self.height), vec![child]);
+        let node = layout::Node::with_children(Size::new(0.0, 0.0), vec![child]);
         node
     }
 
@@ -595,13 +587,22 @@ where
     ) {
         let bounds = layout.bounds();
 
+        let background_color = self
+            .style
+            .background
+            .map(|bg| match bg {
+                Background::Color(color) => color,
+                _ => Color::TRANSPARENT,
+            })
+            .unwrap_or(Color::TRANSPARENT);
+
         renderer.fill_quad(
             renderer::Quad {
                 bounds,
-                border: Border::default(),
-                ..Default::default()
+                border: self.style.border.clone(),
+                shadow: self.style.shadow.clone(),
             },
-            Color::from_rgb8(255, 244, 150),
+            background_color,
         );
 
         self.content.as_widget().draw(
@@ -680,52 +681,151 @@ where
 //         }
 //     }
 // }
-//
-// #[derive(Debug, Clone, Copy, PartialEq)]
-// pub struct Style {
-//     /// The [`Background`] of the button.
-//     pub background: Option<Background>,
-//     /// The border radius of the button.
-//     pub border_radius: Radius,
-//     /// The border width of the button.
-//     pub border_width: f32,
-//     /// The border [`Color`] of the button.
-//     pub border_color: Color,
-//     /// The icon [`Color`] of the button.
-//     pub icon_color: Option<Color>,
-//     /// The text [`Color`] of the button.
-//     pub text_color: Color,
-//     /// The [`Border`] of the button.
-//     pub border: Border,
-//     /// The [`Shadow`] of the button.
-//     pub shadow: Shadow,
-// }
-//
-// impl Style {
-//     /// Updates the [`Style`] with the given [`Background`].
-//     pub fn with_background(self, background: impl Into<Background>) -> Self {
-//         Self {
-//             background: Some(background.into()),
-//             ..self
-//         }
-//     }
-// }
-//
-// impl Default for Style {
-//     fn default() -> Self {
-//         Self {
-//             background: None,
-//             border_radius: 0.0.into(),
-//             border_width: 0.0,
-//             border_color: Color::TRANSPARENT,
-//             icon_color: None,
-//             text_color: Color::BLACK,
-//             border: Border::default(),
-//             shadow: Shadow::default(),
-//         }
-//     }
-// }
-//
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ButtonStyle {
+    /// The [`Background`] of the button.
+    pub background: Option<Background>,
+    /// The border radius of the button.
+    pub border_radius: Radius,
+    /// The border width of the button.
+    pub border_width: f32,
+    /// The border [`Color`] of the button.
+    pub border_color: Color,
+    /// The icon [`Color`] of the button.
+    pub icon_color: Option<Color>,
+    /// The text [`Color`] of the button.
+    pub text_color: Color,
+    /// The [`Border`] of the button.
+    pub border: Border,
+    /// The [`Shadow`] of the button.
+    pub shadow: Shadow,
+}
+
+impl ButtonStyle {
+    /// Updates the [`Style`] with the given [`Background`].
+    pub fn with_background(self, background: impl Into<Background>) -> Self {
+        Self {
+            background: Some(background.into()),
+            ..self
+        }
+    }
+}
+
+impl Default for ButtonStyle {
+    fn default() -> Self {
+        Self {
+            background: None,
+            border_radius: 0.0.into(),
+            border_width: 0.0,
+            border_color: Color::TRANSPARENT,
+            icon_color: None,
+            text_color: Color::BLACK,
+            border: Border::default(),
+            shadow: Shadow::default(),
+        }
+    }
+}
+
+/// The strategy used to fill space in a specific dimension.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CustomButtonLength {
+    /// Fill all the remaining space
+    Fill,
+
+    /// Fill a portion of the remaining space relative to other elements.
+    ///
+    /// Let's say we have two elements: one with `FillPortion(2)` and one with
+    /// `FillPortion(3)`. The first will get 2 portions of the available space,
+    /// while the second one would get 3.
+    ///
+    /// `Length::Fill` is equivalent to `Length::FillPortion(1)`.
+    FillPortion(u16),
+
+    /// Fill the least amount of space
+    Shrink,
+
+    /// Fill a fixed amount of space
+    Fixed(f32),
+}
+
+impl CustomButtonLength {
+    /// Returns the _fill factor_ of the [`Length`].
+    ///
+    /// The _fill factor_ is a relative unit describing how much of the
+    /// remaining space should be filled when compared to other elements. It
+    /// is only meant to be used by layout engines.
+    pub fn fill_factor(&self) -> u16 {
+        match self {
+            CustomButtonLength::Fill => 1,
+            CustomButtonLength::FillPortion(factor) => *factor,
+            CustomButtonLength::Shrink => 0,
+            CustomButtonLength::Fixed(_) => 0,
+        }
+    }
+
+    /// Returns `true` iff the [`Length`] is either [`Length::Fill`] or
+    // [`Length::FillPortion`].
+    pub fn is_fill(&self) -> bool {
+        self.fill_factor() != 0
+    }
+
+    /// Returns the "fluid" variant of the [`Length`].
+    ///
+    /// Specifically:
+    /// - [`Length::Shrink`] if [`Length::Shrink`] or [`Length::Fixed`].
+    /// - [`Length::Fill`] otherwise.
+    pub fn fluid(&self) -> Self {
+        match self {
+            CustomButtonLength::Fill | CustomButtonLength::FillPortion(_) => {
+                CustomButtonLength::Fill
+            }
+            CustomButtonLength::Shrink | CustomButtonLength::Fixed(_) => CustomButtonLength::Shrink,
+        }
+    }
+
+    /// Adapts the [`Length`] so it can contain the other [`Length`] and
+    /// match its fluidity.
+    pub fn enclose(self, other: CustomButtonLength) -> Self {
+        match (self, other) {
+            (
+                CustomButtonLength::Shrink,
+                CustomButtonLength::Fill | CustomButtonLength::FillPortion(_),
+            ) => other,
+            _ => self,
+        }
+    }
+}
+
+impl From<CustomButtonLength> for iced::Length {
+    fn from(length: CustomButtonLength) -> Self {
+        match length {
+            CustomButtonLength::Fill => iced::Length::Fill,
+            CustomButtonLength::FillPortion(portion) => iced::Length::FillPortion(portion),
+            CustomButtonLength::Shrink => iced::Length::Shrink,
+            CustomButtonLength::Fixed(value) => iced::Length::Fixed(value),
+        }
+    }
+}
+
+impl From<Pixels> for CustomButtonLength {
+    fn from(amount: Pixels) -> Self {
+        CustomButtonLength::Fixed(f32::from(amount))
+    }
+}
+
+impl From<f32> for CustomButtonLength {
+    fn from(amount: f32) -> Self {
+        CustomButtonLength::Fixed(amount)
+    }
+}
+
+impl From<u32> for CustomButtonLength {
+    fn from(units: u32) -> Self {
+        CustomButtonLength::Fixed(units as f32)
+    }
+}
+
 // #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 // struct ButtonState {
 //     is_hovered: bool,
