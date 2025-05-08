@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use iced::advanced::widget::tree::Tag;
 use iced::border::{self, Radius};
 use iced::theme::palette;
 use iced::widget::{
@@ -19,7 +20,7 @@ use crate::enums::message::Message;
 use crate::enums::pane::PaneState;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
-use iced::advanced::widget::{self, Widget};
+use iced::advanced::widget::{self, Tree, Widget};
 
 pub struct Yoink {
     pub is_capture: bool,
@@ -381,9 +382,11 @@ impl Yoink {
     }
 
     pub fn view_editor_pane(&self) -> Element<Message> {
+        let input = text_input("Placeholder", "").padding(10).into();
         let mybutton = CustomButton {
             width: 100.0,
             height: 40.0,
+            content: input,
         };
         let editor_pane = if self.editor_pane.is_visible {
             container(col![
@@ -521,9 +524,13 @@ impl Yoink {
     }
 }
 
-pub struct CustomButton {
+pub struct CustomButton<Message, Theme, Renderer>
+where
+    Renderer: renderer::Renderer,
+{
     pub width: f32,
     pub height: f32,
+    pub content: Element<'static, Message, Theme, Renderer>,
 }
 
 // impl Circle {
@@ -536,9 +543,12 @@ pub struct CustomButton {
 //     Circle::new(radius)
 // }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for CustomButton
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for CustomButton<Message, Theme, Renderer>
 where
-    Renderer: renderer::Renderer,
+    Renderer: renderer::Renderer + 'static,
+    Message: 'static,
+    Theme: 'static,
 {
     fn size(&self) -> Size<Length> {
         Size {
@@ -547,42 +557,82 @@ where
         }
     }
 
+    fn children(&self) -> Vec<Tree> {
+        vec![Tree::new(&self.content)]
+    }
+
+    fn diff(&self, tree: &mut Tree) {
+        tree.diff_children(std::slice::from_ref(&self.content));
+    }
+
     fn layout(
         &self,
-        _tree: &mut widget::Tree,
-        _renderer: &Renderer,
-        _limits: &layout::Limits,
+        tree: &mut widget::Tree,
+        renderer: &Renderer,
+        limits: &layout::Limits,
     ) -> layout::Node {
-        layout::Node::new(Size::new(self.width, self.height))
+        let child_limits = limits
+            .width(Length::Fixed(self.width))
+            .height(Length::Fixed(self.height));
+
+        let child = self
+            .content
+            .as_widget()
+            .layout(&mut tree.children[0], renderer, &child_limits);
+        let mut node = layout::Node::with_children(Size::new(self.width, self.height), vec![child]);
+        node
     }
 
     fn draw(
         &self,
-        _state: &widget::Tree,
+        state: &widget::Tree,
         renderer: &mut Renderer,
         _theme: &Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
-        _cursor: mouse::Cursor,
-        _viewport: &Rectangle,
+        cursor: mouse::Cursor,
+        viewport: &Rectangle,
     ) {
+        let bounds = layout.bounds();
+
         renderer.fill_quad(
             renderer::Quad {
-                bounds: layout.bounds(),
+                bounds,
                 border: Border::default(),
                 ..Default::default()
             },
             Color::from_rgb8(255, 244, 150),
-        )
+        );
+
+        self.content.as_widget().draw(
+            &state.children[0],
+            renderer,
+            _theme,
+            _style,
+            layout.children().next().unwrap(),
+            cursor,
+            viewport,
+        );
+    }
+
+    fn tag(&self) -> Tag {
+        Tag::of::<CustomButton<Message, Theme, Renderer>>()
+    }
+
+    fn state(&self) -> widget::tree::State {
+        widget::tree::State::new(())
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<CustomButton> for Element<'a, Message, Theme, Renderer>
+impl<Message, Theme, Renderer> From<CustomButton<Message, Theme, Renderer>>
+    for Element<'static, Message, Theme, Renderer>
 where
-    Renderer: renderer::Renderer,
+    Renderer: renderer::Renderer + 'static,
+    Message: 'static,
+    Theme: 'static,
 {
-    fn from(button: CustomButton) -> Self {
-        Self::new(button)
+    fn from(button: CustomButton<Message, Theme, Renderer>) -> Self {
+        Element::new(button)
     }
 }
 
