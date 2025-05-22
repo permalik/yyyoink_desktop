@@ -22,5 +22,5 @@ WORKDIR /bin
 
 # Copy /nix/store
 COPY --from=builder /tmp/nix-store-closure /nix/store
-COPY --from=builder /tmp/build/result /zig_sandbox
-CMD ["/zig_sandbox/bin/zig_sandbox"]
+COPY --from=builder /tmp/build/result /yyyoink-parse
+CMD ["/yyyoink-parse/bin/yyyoink-parse"]

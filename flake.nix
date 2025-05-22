@@ -1,11 +1,11 @@
 {
-  description = "yyyoink_desktop";
+  description = "zig_sandbox";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/release-24.11";
-    nix-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nix-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    zig-overlay.url = "github:mitchellh/zig-overlay";
   };
 
   outputs = {
@@ -13,75 +13,45 @@
     nixpkgs,
     nix-unstable,
     flake-utils,
-    rust-overlay,
+    zig-overlay,
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        pname = "yyyoink_desktop";
-
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [rust-overlay.overlays.default];
-        };
-
-        buildInputs = with pkgs; [
-            rust-bin.stable.latest.default
-            expat
-            fontconfig
-            freetype
-            freetype.dev
-            libGL
-            pkg-config
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-            wayland
-            libxkbcommon
-            alejandra
-            pre-commit
-        ];
-
-        rustToolchain = pkgs.rust-bin.stable.latest.default;
-
-        rustPlatform = pkgs.makeRustPlatform {
-          cargo = rustToolchain;
-          rustc = rustToolchain;
-        };
+        zigPackage = zig-overlay.packages.${system}."0.14.0";
+        pkgs = nixpkgs.legacyPackages.${system};
       in {
-        packages.default = rustPlatform.buildRustPackage {
-          name = pname;
-          src = ./.;
+        formatter = pkgs.nixpkgs-fmt;
+        devShells.default = pkgs.mkShell {
+            name = "zig_sandbox";
+            packages = with pkgs; [
+                alejandra
+                pre-commit
+            ];
+            nativeBuildInputs = [
+                zigPackage
+            ];
 
-          cargoLock.lockFile = ./Cargo.lock;
-
-          # buildInputs = [];
-          buildPhase = ''
-            cargo build --release -p ${pname}
-          '';
-
-          installPhase = ''
-            mkdir -p $out/bin
-            cp target/release/${pname} $out/bin/
-          '';
+            shellHook = with pkgs; ''
+                # Source .bashrc
+                . .bashrc
+            '';
         };
 
-        devShells.default = pkgs.mkShell {
-          inherit buildInputs;
-          # buildInputs = with pkgs; [
-          #   rust-bin.stable.latest.default
-          #   alejandra
-          #   pre-commit
-          # ];
+        packages.default = pkgs.stdenv.mkDerivation {
+            name = "zig_sandbox";
+            src = ./.;
 
-          RUST_BACKTRACE = 1;
+            XDG_CACHE_HOME = "${placeholder "out"}";
 
-          LD_LIBRARY_PATH =
-            builtins.foldl' (a: b: "${a}:${b}/lib") "${pkgs.vulkan-loader}/lib" buildInputs;
+            # buildInputs = [];
+            buildPhase = ''
+                ${zigPackage}/bin/zig build
+            '';
 
-          shellHook = ''
-            . .bashrc
-          '';
+            installPhase = ''
+                ${zigPackage}/bin/zig build install --prefix $out
+                rm -rf $out/zig
+            '';
         };
       }
     );

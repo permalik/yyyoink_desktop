@@ -1,9 +1,9 @@
-# Custom Prompt
-export PS1="\n\[\e[1;32m\][devshell](yyyoink) \w\n❯ \[\e[0m\]"
+# Prompt
+export PS1="\n\[\e[1;32m\][devshell](yyyoink_parse) \w\n❯ \[\e[0m\]"
 
 # Aliases
-alias docker-build-dev="docker build -t yyyoink:dev ."
-alias docker-run-dev="docker run --rm yyyoink:dev"
+alias docker-build-dev="docker build -t yyyoink_parse:dev ."
+alias docker-run-dev="docker run --rm yyyoink_parse:dev"
 alias nv="nvim"
 alias glr="pretty_git_log"
 alias gs="git status"
